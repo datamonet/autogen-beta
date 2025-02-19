@@ -3,7 +3,7 @@ import { Menu } from "@headlessui/react";
 import {
   BellIcon,
   MoonIcon,
-  SunIcon,
+  SparklesIcon,
   MagnifyingGlassIcon,
 } from "@heroicons/react/24/outline";
 import {
@@ -16,6 +16,7 @@ import { Tooltip } from "antd";
 import { appContext } from "../hooks/provider";
 import { useConfigStore } from "../hooks/store";
 import { Link } from "gatsby";
+import { getTakinServerUrl } from "./utils";
 
 type ContentHeaderProps = {
   onMobileMenuToggle: () => void;
@@ -30,6 +31,7 @@ const ContentHeader = ({
   onMobileMenuToggle,
   isMobileMenuOpen,
 }: ContentHeaderProps) => {
+  const takinServerUrl = getTakinServerUrl();
   const { darkMode, setDarkMode, user, logout } = React.useContext(appContext);
   const { sidebar, setSidebarState, header } = useConfigStore();
   const { isExpanded } = sidebar;
@@ -126,7 +128,7 @@ const ContentHeader = ({
             </form>
 
             {/* Dark Mode Toggle */}
-            <button
+            {/* <button
               onClick={() =>
                 setDarkMode(darkMode === "dark" ? "light" : "dark")
               }
@@ -137,8 +139,20 @@ const ContentHeader = ({
               ) : (
                 <SunIcon className="h-6 w-6" />
               )}
-            </button>
-
+            </button> */}
+            {user && <div className="ml-3 flex items-center space-x-2">
+              <SparklesIcon className="mr-2 h-4 w-4" />
+              <span
+                className="text-sm text-primary"
+                title={`Subscription credits: ${Number(user?.subscriptionCredits) || 0} + Purchased credits: ${Number(user?.subscriptionPurchasedCredits) || 0} + Extra credits: ${Number(user?.extraCredits) || 0}`}
+              >
+                {[
+                  user?.subscriptionCredits,
+                  user?.subscriptionPurchasedCredits,
+                  user?.extraCredits
+                ].reduce((sum: number, credit?: number) => sum + (Number(credit) || 0), 0).toFixed(0)}
+              </span>
+            </div>}
             {/* Notifications */}
             <button className="text-secondary hidden hover:text-primary">
               <BellIcon className="h-6 w-6" />
@@ -151,10 +165,10 @@ const ContentHeader = ({
             {user && (
               <Menu as="div" className="relative">
                 <Menu.Button className="flex items-center">
-                  {user.avatar_url ? (
+                  {user.image ? (
                     <img
                       className="h-8 w-8 rounded-full"
-                      src={user.avatar_url}
+                      src={user.image}
                       alt={user.name}
                     />
                   ) : (
@@ -173,11 +187,20 @@ const ContentHeader = ({
                   <Menu.Item>
                     {({ active }) => (
                       <a
-                        href="#"
+                        href={`${takinServerUrl}/user`}
+                        className={classNames(active ? 'bg-secondary' : '', 'block px-4 py-2 text-sm text-primary')}
+                      >
+                        Settings
+                      </a>
+                    )}
+                  </Menu.Item>
+                  <Menu.Item>
+                    {({ active }) => (
+                      <a
+                        href=""
                         onClick={() => logout()}
-                        className={`${
-                          active ? "bg-secondary" : ""
-                        } block px-4 py-2 text-sm text-primary`}
+                        className={`${active ? "bg-secondary" : ""
+                          } block px-4 py-2 text-sm text-primary`}
                       >
                         Sign out
                       </a>

@@ -191,6 +191,8 @@ const createNode = (
         description: "",
         isActive: false,
         draggable: false,
+        // taking command: 添加 runId 用于追踪执行状态
+        runId: run?.id,
       },
     };
   }
@@ -344,9 +346,8 @@ const AgentFlow: React.FC<AgentFlowProps> = ({ teamConfig, run }) => {
       const createEdgeLabel = (transition: MessageSequence) => {
         if (!settings.showLabels) return "";
         if (transition.totalTokens > 0) {
-          return `${transition.count > 1 ? `${transition.count}x` : ""} ${
-            settings.showTokens ? `(${transition.totalTokens} tokens)` : ""
-          }`.trim();
+          return `${transition.count > 1 ? `${transition.count}x` : ""} ${settings.showTokens ? `(${transition.totalTokens} tokens)` : ""
+            }`.trim();
         }
         return "";
       };
@@ -534,11 +535,10 @@ const AgentFlow: React.FC<AgentFlowProps> = ({ teamConfig, run }) => {
   return (
     <div
       ref={flowWrapper}
-      className={`transition-all duration-200 ${
-        isFullscreen
-          ? "fixed inset-4 z-[50] shadow"
-          : "w-full h-full min-h-[300px]"
-      } bg-tertiary rounded-lg`}
+      className={`transition-all duration-200 ${isFullscreen
+        ? "fixed inset-4 z-[50] shadow"
+        : "w-full h-full min-h-[300px]"
+        } bg-tertiary rounded-lg`}
     >
       {isFullscreen && (
         <div

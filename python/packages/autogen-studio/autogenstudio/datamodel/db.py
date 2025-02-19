@@ -7,7 +7,7 @@ from uuid import UUID, uuid4
 
 from autogen_core import ComponentModel
 from pydantic import ConfigDict
-from sqlalchemy import ForeignKey, Integer
+from sqlalchemy import ForeignKey, Integer, false
 from sqlmodel import JSON, Column, DateTime, Field, SQLModel, func
 
 from .types import MessageConfig, MessageMeta, TeamResult
@@ -103,3 +103,4 @@ class Run(SQLModel, table=True):
     messages: Union[List[Message], List[dict]] = Field(default_factory=list, sa_column=Column(JSON))
 
     model_config = ConfigDict(json_encoders={UUID: str, datetime: lambda v: v.isoformat()})
+    is_charged: Optional[bool] = False # takin command:用于记录是否已经扣费，避免多次扣费,直接修改成False

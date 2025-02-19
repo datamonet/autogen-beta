@@ -13,6 +13,7 @@ import {
   Rocket,
 } from "lucide-react";
 import Icon from "./icons";
+import { getTakinServerUrl } from "./utils";
 
 interface INavItem {
   name: string;
@@ -44,12 +45,13 @@ const navigation: INavItem[] = [
     icon: GalleryHorizontalEnd,
     breadcrumbs: [{ name: "Gallery", href: "/gallery", current: true }],
   },
-  {
-    name: "Deploy",
-    href: "/deploy",
-    icon: Rocket,
-    breadcrumbs: [{ name: "Deploy", href: "/deploy", current: true }],
-  },
+  // takin command:不需要显示deploy
+  // {
+  //   name: "Deploy",
+  //   href: "/deploy",
+  //   icon: Rocket,
+  //   breadcrumbs: [{ name: "Deploy", href: "/deploy", current: true }],
+  // },
 ];
 
 const classNames = (...classes: (string | undefined | boolean)[]) => {
@@ -68,7 +70,7 @@ type SidebarProps = {
 const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
   const { sidebar, setHeader, setSidebarState } = useConfigStore();
   const { isExpanded } = sidebar;
-
+  const takinServerUrl = getTakinServerUrl();
   // Set initial header state based on current route
   React.useEffect(() => {
     setNavigationHeader(link);
@@ -116,7 +118,7 @@ const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
       >
         <Link
           to="/"
-          onClick={() => setNavigationHeader("/")}
+          onClick={() => setNavigationHeader(takinServerUrl)}
           className="w-8 text-right text-accent hover:opacity-80 transition-opacity"
         >
           <Icon icon="app" size={8} />
@@ -196,8 +198,10 @@ const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
             </ul>
           </li>
 
+          {/* takin command：隐藏设置页面，内部装有一个设置，Show LLM Events：true */}
           {/* Settings at bottom */}
-          <li
+
+          {/* <li
             className={classNames(
               "mt-auto -mx-2 mb-4",
               !showFull && "flex flex-col items-center gap-1"
@@ -292,7 +296,7 @@ const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
                 </div>
               </div>
             )}
-          </li>
+          </li> */}
         </ul>
       </nav>
     </div>

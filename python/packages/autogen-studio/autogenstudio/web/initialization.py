@@ -43,7 +43,7 @@ class AppInitializer:
         """Determine application root directory"""
         if app_dir := os.getenv("AUTOGENSTUDIO_APPDIR"):
             return Path(app_dir)
-        return Path.home() / ".autogenstudio"
+        return Path.home() / ".autogenstudio-workspace"
 
     def _get_database_uri(self, app_root: Path) -> str:
         """Generate database URI based on settings or environment"""

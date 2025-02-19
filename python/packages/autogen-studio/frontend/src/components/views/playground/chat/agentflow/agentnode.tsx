@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Handle, Position } from "@xyflow/react";
 import {
   CheckCircle,
@@ -9,7 +9,7 @@ import {
   Flag,
 } from "lucide-react";
 import { RunStatus } from "../../../../types/datamodel";
-
+import { getServerUrl } from "../../../../utils";
 export type NodeType = "agent" | "user" | "end";
 
 export interface AgentNodeData {
@@ -20,6 +20,7 @@ export interface AgentNodeData {
   isActive?: boolean;
   status?: RunStatus | null;
   reason?: string | null;
+  runId?: string;
   draggable: boolean;
 }
 
@@ -29,6 +30,36 @@ interface AgentNodeProps {
 }
 
 function AgentNode({ data, isConnectable }: AgentNodeProps) {
+  const serverUrl = getServerUrl();
+  useEffect(() => {
+    const callCostApi = async () => {
+      if (data.type === "end" && data.status && data.runId) {
+        console.log('AgentNode end - calling cost API', {
+          status: data.status,
+          runId: data.runId,
+          type: data.type
+        });
+
+        try {
+          const response = await fetch(`${serverUrl}/users/cost/${data.runId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include"  // This ensures cookies are sent with the request
+          });
+
+          const result = await response.json();
+          if (!result.status) {
+            console.error('Cost API error:', result.message);
+          }
+        } catch (error) {
+          console.error('Failed to call cost API:', error);
+        }
+      }
+    };
+
+    callCostApi();
+  }, [data.type, data.status, data.runId, serverUrl]);
+
   const handleClick = useCallback(() => {
     if (data.type !== "end") {
       console.log(`${data.type} ${data.label} clicked`);
@@ -71,8 +102,8 @@ function AgentNode({ data, isConnectable }: AgentNodeProps) {
           data.status === "complete"
             ? "var(--accent)"
             : data.status === "error"
-            ? "rgb(239 68 68)"
-            : "var(--secondary)",
+              ? "rgb(239 68 68)"
+              : "var(--secondary)",
       };
     }
 

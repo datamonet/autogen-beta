@@ -7,7 +7,7 @@ import typer
 import uvicorn
 from typing_extensions import Annotated
 
-from .version import VERSION
+from autogenstudio.version import VERSION
 
 app = typer.Typer()
 
@@ -26,11 +26,11 @@ def get_env_file_path():
 @app.command()
 def ui(
     host: str = "127.0.0.1",
-    port: int = 8081,
+    port: int = 3002, # takin command:直接修改成3002
     workers: int = 1,
     reload: Annotated[bool, typer.Option("--reload")] = False,
     docs: bool = True,
-    appdir: str = None,
+    appdir: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".autogenstudio-workspace"), # takin command:本地启动将appdir修改成.autogenstudio-workspace
     database_uri: Optional[str] = None,
     upgrade_database: bool = False,
 ):
@@ -61,10 +61,13 @@ def ui(
         env_vars["AUTOGENSTUDIO_UPGRADE_DATABASE"] = "1"
 
     # Create temporary env file to share configuration with uvicorn workers
-    env_file_path = get_env_file_path()
-    with open(env_file_path, "w") as temp_env:
-        for key, value in env_vars.items():
-            temp_env.write(f"{key}={value}\n")
+    # env_file_path = get_env_file_path()
+    # takin command:上面的env导入是固定的。将其修改为在工作目录下导入
+    env_file_path = os.path.join(appdir, ".env")
+    # with open(env_file_path, "w") as temp_env:
+    #     for key, value in env_vars.items():
+    #         temp_env.write(f"{key}={value}\n")
+
 
     uvicorn.run(
         "autogenstudio.web.app:app",
