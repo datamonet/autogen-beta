@@ -246,6 +246,32 @@ export default function ChatView({ session }: ChatViewProps) {
               setActiveSocket(null);
               activeSocketRef.current = null;
             }
+
+            // takin command:扣费 Call cost API when run completes
+            const callCostApi = async () => {
+              if (current.id) {
+            
+                try {
+                  const response = await fetch(`${getServerUrl()}/users/cost`, {
+                    method: "POST",
+                    body: JSON.stringify({...teamConfig?.config?.model_client.config, run_id: current.id}),
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include"
+                  });
+
+                  const result = await response.json();
+                  if (!result.status) {
+                    console.error('Cost API error:', result.message);
+                  }
+                } catch (error) {
+                  console.error('Failed to call cost API:', error);
+                }
+              }
+            };
+
+            // Execute the cost API call
+            callCostApi();
+
             setExistingRuns((prev) => [...prev, updatedRun]);
             return null;
           }

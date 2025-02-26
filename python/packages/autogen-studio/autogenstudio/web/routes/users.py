@@ -62,12 +62,21 @@ async def logout(response: FastAPIResponse):
         }
 
 
-@router.post("/cost/{run_id}")
-async def cost(run_id: UUID, request: Request, db=Depends(get_db)) -> Dict:
-    """Calculate cost based on run details and user information
+from pydantic import BaseModel
+
+class CostRequest(BaseModel):
+    """Request body model for cost calculation"""
+    # Add your required fields here, for example:
+    model: str
+    run_id: str
+
+@router.post("/cost")
+async def cost(request: Request,cost_data: CostRequest, db=Depends(get_db)) -> Dict:
+    """takin command:Calculate cost based on run details and user information
     
     Args:
         run_id (UUID): The ID of the run to calculate cost for
+        cost_data (CostRequest): The request body containing cost calculation data
         request (Request): The FastAPI request object
         db: Database dependency
         
@@ -76,10 +85,11 @@ async def cost(run_id: UUID, request: Request, db=Depends(get_db)) -> Dict:
     """
 
     # Validate and get run details
-    run = db.get(Run, filters={"id": run_id}, return_json=False)
-    if not run:
+    run = db.get(Run, filters={"id": cost_data.run_id}, return_json=False)
+    if not run.status or not run.data:
         return {"status": False, "message": "Run not found"}
-        
+    run_result = run.data[0].team_result
+
     # Get pricing service URL
     pricing_url = os.getenv('TAKIN_API_URL')
     
@@ -95,7 +105,7 @@ async def cost(run_id: UUID, request: Request, db=Depends(get_db)) -> Dict:
         try:
             response = await client.post(
                 pricing_url,
-                json={"run_result": run.team_result},
+                json={"run_id":cost_data.run_id,"run_result": run_result,"model":cost_data.model},
                 headers={
                     "Content-Type": "application/json",
                     "Authorization": f"Bearer {token}"
