@@ -6,10 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: autogen
-    image: takinai/takin-autogen:0.0.1
+    image: takinai/takin-autogen:0.0.2
     ports:
-      - "3002:3002"
+      - "3003:3003"
     env_file:
       - .env
     command: >
-      sh -c "gunicorn -w $((2 * $(getconf _NPROCESSORS_ONLN) + 1)) --timeout 12600 -k uvicorn.workers.UvicornWorker autogenstudio.web.app:app --bind '0.0.0.0:3002'"
+      sh -c "gunicorn -w $((2 * $(getconf _NPROCESSORS_ONLN) + 1)) --timeout 12600 -k uvicorn.workers.UvicornWorker autogenstudio.web.app:app --bind '0.0.0.0:3003'"

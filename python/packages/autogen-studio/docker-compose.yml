@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: autogen
-    image: takinai/takin-autogen:0.0.1
+    image: takinai/takin-autogen:0.0.2
     ports:
       - "3003:3003"
     env_file:
