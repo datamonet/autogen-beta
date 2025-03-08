@@ -5,17 +5,10 @@ WORKDIR /code
 RUN pip install -U gunicorn autogenstudio
 RUN pip install -U PyJWT psycopg2-binary 
 
-RUN if ! id -u 1000 > /dev/null 2>&1; then \
-    useradd -m -u 1000 user; \
-fi
+ENV AUTOGENSTUDIO_APPDIR=/app
 
-USER user
-ENV HOME=/home/user \
-    PATH=/home/user/.local/bin:$PATH \
-    AUTOGENSTUDIO_APPDIR=/home/user/app
+WORKDIR /app
 
-WORKDIR $HOME/app
-
-COPY --chown=user . $HOME/app
+COPY . /app
 
 CMD gunicorn -w $((2 * $(getconf _NPROCESSORS_ONLN) + 1)) --timeout 12600 -k uvicorn.workers.UvicornWorker autogenstudio.web.app:app --bind "0.0.0.0:3002"
