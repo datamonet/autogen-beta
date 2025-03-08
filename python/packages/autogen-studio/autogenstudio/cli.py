@@ -26,7 +26,7 @@ def get_env_file_path():
 @app.command()
 def ui(
     host: str = "127.0.0.1",
-    port: int = 3002, # takin command:直接修改成3002
+    port: int = 3003, # takin command:直接修改成3003
     workers: int = 1,
     reload: Annotated[bool, typer.Option("--reload")] = False,
     docs: bool = True,
