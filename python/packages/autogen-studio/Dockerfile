@@ -5,7 +5,10 @@ WORKDIR /code
 RUN pip install -U gunicorn autogenstudio
 RUN pip install -U PyJWT psycopg2-binary 
 
-RUN useradd -m -u 1000 user
+RUN if ! id -u 1000 > /dev/null 2>&1; then \
+    useradd -m -u 1000 user; \
+fi
+
 USER user
 ENV HOME=/home/user \
     PATH=/home/user/.local/bin:$PATH \
