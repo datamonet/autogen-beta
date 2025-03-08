@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/devcontainers/python:3.10
 WORKDIR /code
 
 RUN pip install -U gunicorn autogenstudio
+RUN pip install -U PyJWT psycopg2-binary 
 
 RUN useradd -m -u 1000 user
 USER user
