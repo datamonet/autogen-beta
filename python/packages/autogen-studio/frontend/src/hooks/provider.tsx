@@ -16,8 +16,8 @@ export interface IUser {
   name: string;
   email?: string;
   image?: string;
-  role: number;
-  level?: number;
+  role: string;
+  level?: string;
   extraCredits?: number;
   subscriptionCredits?: number;
   subscriptionPurchasedCredits?: number;

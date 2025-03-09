@@ -187,7 +187,7 @@ const ContentHeader = ({
                   <Menu.Item>
                     {({ active }) => (
                       <a
-                        href={`${takinServerUrl}/user`}
+                        href={user.role.toLowerCase() === 'admin' ? `/settings` : `${takinServerUrl}/settings`}
                         className={classNames(active ? 'bg-secondary' : '', 'block px-4 py-2 text-sm text-primary')}
                       >
                         Settings
