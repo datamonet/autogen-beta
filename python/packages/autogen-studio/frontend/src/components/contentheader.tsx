@@ -196,14 +196,13 @@ const ContentHeader = ({
                   </Menu.Item>
                   <Menu.Item>
                     {({ active }) => (
-                      <a
-                        href=""
+                      <div
                         onClick={() => logout()}
                         className={`${active ? "bg-secondary" : ""
                           } block px-4 py-2 text-sm text-primary`}
                       >
                         Sign out
-                      </a>
+                      </div>
                     )}
                   </Menu.Item>
                 </Menu.Items>

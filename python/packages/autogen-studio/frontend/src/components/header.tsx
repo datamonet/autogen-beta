@@ -11,6 +11,7 @@ import { Fragment } from "react";
 import { appContext } from "../hooks/provider";
 import { Link } from "gatsby";
 import React from "react";
+import { AirVent } from "lucide-react";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -179,8 +180,7 @@ const Header = ({ meta, link }: any) => {
 
                             <Menu.Item>
                               {({ active }) => (
-                                <a
-                                  href="#"
+                                <div
                                   onClick={() => {
                                     logout();
                                   }}
@@ -190,7 +190,7 @@ const Header = ({ meta, link }: any) => {
                                   )}
                                 >
                                   Sign out
-                                </a>
+                                </div>
                               )}
                             </Menu.Item>
                           </Menu.Items>
@@ -253,9 +253,7 @@ const Header = ({ meta, link }: any) => {
                   </button>
                 </div>
                 <div className="mt-3 space-y-1">
-                  <Disclosure.Button
-                    as="a"
-                    href="#"
+                  <Disclosure.Button        
                     onClick={() => logout()}
                     className="block px-4 py-2 text-base font-medium text-secondary hover:text-primary "
                   >
