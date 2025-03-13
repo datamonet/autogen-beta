@@ -250,11 +250,22 @@ export default function ChatView({ session }: ChatViewProps) {
             // takin command:扣费 Call cost API when run completes
             const callCostApi = async () => {
               if (current.id) {
-            
+              
                 try {
+                  {/**
+                     // TODO: 这里一开始应该拿到team的配置，根据每个agent的具体的model配置，配合task的message中的token数，计算出真实消耗
+                     但是因为现在的team 配置是不统一的，有的配置有teamConfig?.config?.model_client.config 
+                     有的需要teamConfig?.config?.participants[0].config.model_client.config.model_client.config
+
+                     目前autogen只支持了一个gpt-4o-mini模型，暂时先写死
+                     */}
+                 
+                  const config = {model: 'gpt-4o-mini'} 
+                  // const config = teamConfig?.config?.participants[0].config.model_client.config 
+                  // console.log(current.id,config)
                   const response = await fetch(`${getServerUrl()}/users/cost`, {
                     method: "POST",
-                    body: JSON.stringify({...teamConfig?.config?.model_client.config, run_id: current.id}),
+                    body: JSON.stringify({...config, run_id: current.id}),
                     headers: { "Content-Type": "application/json" },
                     credentials: "include"
                   });
@@ -272,6 +283,7 @@ export default function ChatView({ session }: ChatViewProps) {
             // Execute the cost API call
             callCostApi();
 
+            console.log(current.id,teamConfig,updatedRun)
             setExistingRuns((prev) => [...prev, updatedRun]);
             return null;
           }

@@ -150,7 +150,7 @@ const ContentHeader = ({
                   user?.subscriptionCredits,
                   user?.subscriptionPurchasedCredits,
                   user?.extraCredits
-                ].reduce((sum: number, credit?: number) => sum + (Number(credit) || 0), 0).toFixed(0)}
+                ].reduce((sum: number, credit?: number) => sum + (Number(credit) || 0), 0).toFixed(2)}
               </span>
             </div>}
             {/* Notifications */}
