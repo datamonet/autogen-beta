@@ -800,39 +800,6 @@
           "config": {
             "model": "gpt-4o-mini"
           }
-        },
-        {
-          "provider": "autogen_ext.models.openai.OpenAIChatCompletionClient",
-          "component_type": "model",
-          "version": 1,
-          "component_version": 1,
-          "description": "Local Mistral-7B model client for instruction-based generation (Ollama, LMStudio).",
-          "label": "Mistral-7B Local",
-          "config": {
-            "model": "TheBloke/Mistral-7B-Instruct-v0.2-GGUF",
-            "model_info": {
-              "vision": false,
-              "function_calling": true,
-              "json_output": false,
-              "family": "unknown"
-            },
-            "base_url": "http://localhost:1234/v1"
-          }
-        },
-        {
-          "provider": "autogen_ext.models.openai.AzureOpenAIChatCompletionClient",
-          "component_type": "model",
-          "version": 1,
-          "component_version": 1,
-          "description": "GPT-4o Mini Azure OpenAI model client.",
-          "label": "AzureOpenAI GPT-4o-mini",
-          "config": {
-            "model": "gpt-4o-mini",
-            "api_key": "sk-...",
-            "azure_endpoint": "https://{your-custom-endpoint}.openai.azure.com/",
-            "azure_deployment": "{your-azure-deployment}",
-            "api_version": "2024-06-01"
-          }
         }
       ],
       "tools": [

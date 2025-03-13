@@ -255,14 +255,14 @@ export default function ChatView({ session }: ChatViewProps) {
                   {/**
                      // TODO: 这里一开始应该拿到team的配置，根据每个agent的具体的model配置，配合task的message中的token数，计算出真实消耗
                      但是因为现在的team 配置是不统一的，有的配置有teamConfig?.config?.model_client.config 
-                     有的需要teamConfig?.config?.participants[0].config.model_client.config.model_client.config
+                     有的需要teamConfig?.config?.participants[0].config.model_client.config
 
-                     目前autogen只支持了一个gpt-4o-mini模型，暂时先写死
+                     目前autogen只支持了一个gpt-4o-mini模型
                      */}
                  
-                  const config = {model: 'gpt-4o-mini'} 
-                  // const config = teamConfig?.config?.participants[0].config.model_client.config 
-                  // console.log(current.id,config)
+                  
+                  const config = teamConfig?.config?.participants[0].config.model_client.config || {model: 'gpt-4o-mini'} 
+                 
                   const response = await fetch(`${getServerUrl()}/users/cost`, {
                     method: "POST",
                     body: JSON.stringify({...config, run_id: current.id}),
