@@ -3,13 +3,13 @@ import logging
 import traceback
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, Optional, Union
-from uuid import UUID
 
 from autogen_agentchat.base._task import TaskResult
 from autogen_agentchat.messages import (
     AgentEvent,
     ChatMessage,
     HandoffMessage,
+    ModelClientStreamingChunkEvent,
     MultiModalMessage,
     StopMessage,
     TextMessage,
@@ -21,7 +21,16 @@ from autogen_core import Image as AGImage
 from fastapi import WebSocket, WebSocketDisconnect
 
 from ...database import DatabaseManager
-from ...datamodel import LLMCallEventMessage, Message, MessageConfig, Run, RunStatus, TeamResult
+from ...datamodel import (
+    LLMCallEventMessage,
+    Message,
+    MessageConfig,
+    Run,
+    RunStatus,
+    Settings,
+    SettingsConfig,
+    TeamResult,
+)
 from ...teammanager import TeamManager
 
 logger = logging.getLogger(__name__)
@@ -32,11 +41,11 @@ class WebSocketManager:
 
     def __init__(self, db_manager: DatabaseManager):
         self.db_manager = db_manager
-        self._connections: Dict[UUID, WebSocket] = {}
-        self._cancellation_tokens: Dict[UUID, CancellationToken] = {}
+        self._connections: Dict[int, WebSocket] = {}
+        self._cancellation_tokens: Dict[int, CancellationToken] = {}
         # Track explicitly closed connections
-        self._closed_connections: set[UUID] = set()
-        self._input_responses: Dict[UUID, asyncio.Queue] = {}
+        self._closed_connections: set[int] = set()
+        self._input_responses: Dict[int, asyncio.Queue] = {}
 
         self._cancel_message = TeamResult(
             task_result=TaskResult(
@@ -53,7 +62,7 @@ class WebSocketManager:
             duration=0,
         ).model_dump()
 
-    async def connect(self, websocket: WebSocket, run_id: UUID) -> bool:
+    async def connect(self, websocket: WebSocket, run_id: int) -> bool:
         try:
             await websocket.accept()
             self._connections[run_id] = websocket
@@ -70,7 +79,7 @@ class WebSocketManager:
             logger.error(f"Connection error for run {run_id}: {e}")
             return False
 
-    async def start_stream(self, run_id: UUID, task: str, team_config: dict) -> None:
+    async def start_stream(self, run_id: int, task: str, team_config: dict) -> None:
         """Start streaming task execution with proper run management"""
         if run_id not in self._connections or run_id in self._closed_connections:
             raise ValueError(f"No active connection for run {run_id}")
@@ -83,6 +92,9 @@ class WebSocketManager:
         try:
             # Update run with task and status
             run = await self._get_run(run_id)
+            # get user Settings
+            user_settings = await self._get_settings(run.user_id)
+            env_vars = SettingsConfig(**user_settings.config).environment if user_settings else None
             if run:
                 run.task = MessageConfig(content=task, source="user").model_dump()
                 run.status = RunStatus.ACTIVE
@@ -91,7 +103,11 @@ class WebSocketManager:
             input_func = self.create_input_func(run_id)
 
             async for message in team_manager.run_stream(
-                task=task, team_config=team_config, input_func=input_func, cancellation_token=cancellation_token
+                task=task,
+                team_config=team_config,
+                input_func=input_func,
+                cancellation_token=cancellation_token,
+                env_vars=env_vars,
             ):
                 if cancellation_token.is_cancelled() or run_id in self._closed_connections:
                     logger.info(f"Stream cancelled or connection closed for run {run_id}")
@@ -144,7 +160,7 @@ class WebSocketManager:
         finally:
             self._cancellation_tokens.pop(run_id, None)
 
-    async def _save_message(self, run_id: UUID, message: Union[AgentEvent | ChatMessage, ChatMessage]) -> None:
+    async def _save_message(self, run_id: int, message: Union[AgentEvent | ChatMessage, ChatMessage]) -> None:
         """Save a message to the database"""
 
         run = await self._get_run(run_id)
@@ -158,7 +174,7 @@ class WebSocketManager:
             self.db_manager.upsert(db_message)
 
     async def _update_run(
-        self, run_id: UUID, status: RunStatus, team_result: Optional[dict] = None, error: Optional[str] = None
+        self, run_id: int, status: RunStatus, team_result: Optional[dict] = None, error: Optional[str] = None
     ) -> None:
         """Update run status and result"""
         run = await self._get_run(run_id)
@@ -170,7 +186,7 @@ class WebSocketManager:
                 run.error_message = error
             self.db_manager.upsert(run)
 
-    def create_input_func(self, run_id: UUID) -> Callable:
+    def create_input_func(self, run_id: int) -> Callable:
         """Creates an input function for a specific run"""
 
         async def input_handler(prompt: str = "", cancellation_token: Optional[CancellationToken] = None) -> str:
@@ -199,14 +215,14 @@ class WebSocketManager:
 
         return input_handler
 
-    async def handle_input_response(self, run_id: UUID, response: str) -> None:
+    async def handle_input_response(self, run_id: int, response: str) -> None:
         """Handle input response from client"""
         if run_id in self._input_responses:
             await self._input_responses[run_id].put(response)
         else:
             logger.warning(f"Received input response for inactive run {run_id}")
 
-    async def stop_run(self, run_id: UUID, reason: str) -> None:
+    async def stop_run(self, run_id: int, reason: str) -> None:
         if run_id in self._cancellation_tokens:
             logger.info(f"Stopping run {run_id}")
 
@@ -236,7 +252,7 @@ class WebSocketManager:
                 # We might want to force disconnect here if db update failed
                 # await self.disconnect(run_id)  # Optional
 
-    async def disconnect(self, run_id: UUID) -> None:
+    async def disconnect(self, run_id: int) -> None:
         """Clean up connection and associated resources"""
         logger.info(f"Disconnecting run {run_id}")
 
@@ -251,11 +267,11 @@ class WebSocketManager:
         self._cancellation_tokens.pop(run_id, None)
         self._input_responses.pop(run_id, None)
 
-    async def _send_message(self, run_id: UUID, message: dict) -> None:
+    async def _send_message(self, run_id: int, message: dict) -> None:
         """Send a message through the WebSocket with connection state checking
 
         Args:
-            run_id: UUID of the run
+            run_id: id of the run
             message: Message dictionary to send
         """
         if run_id in self._closed_connections:
@@ -275,7 +291,7 @@ class WebSocketManager:
             await self._update_run_status(run_id, RunStatus.ERROR, str(e))
             await self.disconnect(run_id)
 
-    async def _handle_stream_error(self, run_id: UUID, error: Exception) -> None:
+    async def _handle_stream_error(self, run_id: int, error: Exception) -> None:
         """Handle stream errors with proper run updates"""
         if run_id not in self._closed_connections:
             error_result = TeamResult(
@@ -327,6 +343,8 @@ class WebSocketManager:
                     "data": message.model_dump(),
                     "status": "complete",
                 }
+            elif isinstance(message, ModelClientStreamingChunkEvent):
+                return {"type": "message_chunk", "data": message.model_dump()}
 
             elif isinstance(
                 message,
@@ -347,11 +365,11 @@ class WebSocketManager:
             logger.error(f"Message formatting error: {e}")
             return None
 
-    async def _get_run(self, run_id: UUID) -> Optional[Run]:
+    async def _get_run(self, run_id: int) -> Optional[Run]:
         """Get run from database
 
         Args:
-            run_id: UUID of the run to retrieve
+            run_id: id of the run to retrieve
 
         Returns:
             Optional[Run]: Run object if found, None otherwise
@@ -359,11 +377,21 @@ class WebSocketManager:
         response = self.db_manager.get(Run, filters={"id": run_id}, return_json=False)
         return response.data[0] if response.status and response.data else None
 
-    async def _update_run_status(self, run_id: UUID, status: RunStatus, error: Optional[str] = None) -> None:
+    async def _get_settings(self, user_id: str) -> Optional[Settings]:
+        """Get user settings from database
+        Args:
+            user_id: User ID to retrieve settings for
+        Returns:
+            Optional[dict]: User settings if found, None otherwise
+        """
+        response = self.db_manager.get(filters={"user_id": user_id}, model_class=Settings, return_json=False)
+        return response.data[0] if response.status and response.data else None
+
+    async def _update_run_status(self, run_id: int, status: RunStatus, error: Optional[str] = None) -> None:
         """Update run status in database
 
         Args:
-            run_id: UUID of the run to update
+            run_id: id of the run to update
             status: New status to set
             error: Optional error message
         """
@@ -422,11 +450,11 @@ class WebSocketManager:
             self._input_responses.clear()
 
     @property
-    def active_connections(self) -> set[UUID]:
+    def active_connections(self) -> set[int]:
         """Get set of active run IDs"""
         return set(self._connections.keys()) - self._closed_connections
 
     @property
-    def active_runs(self) -> set[UUID]:
+    def active_runs(self) -> set[int]:
         """Get set of runs with active cancellation tokens"""
         return set(self._cancellation_tokens.keys())

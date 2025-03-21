@@ -6,7 +6,7 @@ namespace Microsoft.AutoGen.Contracts;
 /// <summary>
 /// Represents an agent within the runtime that can process messages, maintain state, and be closed when no longer needed.
 /// </summary>
-public interface IAgent : ISaveState<IAgent>
+public interface IAgent : ISaveState
 {
     /// <summary>
     /// Gets the unique identifier of the agent.
@@ -42,6 +42,6 @@ public interface IHostableAgent : IAgent
     /// Called when the runtime is closing.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public ValueTask CloseAsync() => ValueTask.CompletedTask;
+    public ValueTask CloseAsync();
 }
 

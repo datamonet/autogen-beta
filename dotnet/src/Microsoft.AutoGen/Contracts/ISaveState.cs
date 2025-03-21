@@ -9,9 +9,10 @@ namespace Microsoft.AutoGen.Contracts;
 /// Defines a contract for saving and loading the state of an object.
 /// The state must be JSON serializable.
 /// </summary>
-/// <typeparam name="T">The type of the object implementing this interface.</typeparam>
-public interface ISaveState<T>
+public interface ISaveState
 {
+    public static ValueTask<JsonElement> DefaultSaveStateAsync() => new(JsonDocument.Parse("{}").RootElement);
+
     /// <summary>
     /// Saves the current state of the object.
     /// </summary>
@@ -20,7 +21,7 @@ public interface ISaveState<T>
     /// containing the saved state. The structure of the state is implementation-defined
     /// but must be JSON serializable.
     /// </returns>
-    public ValueTask<JsonElement> SaveStateAsync();
+    public virtual ValueTask<JsonElement> SaveStateAsync() => DefaultSaveStateAsync();
 
     /// <summary>
     /// Loads a previously saved state into the object.
@@ -30,6 +31,6 @@ public interface ISaveState<T>
     /// is implementation-defined but must be JSON serializable.
     /// </param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public ValueTask LoadStateAsync(JsonElement state);
+    public virtual ValueTask LoadStateAsync(JsonElement state) => ValueTask.CompletedTask;
 }
 

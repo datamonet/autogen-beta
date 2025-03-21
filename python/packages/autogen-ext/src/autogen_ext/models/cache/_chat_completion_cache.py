@@ -3,7 +3,7 @@ import json
 import warnings
 from typing import Any, AsyncGenerator, List, Mapping, Optional, Sequence, Union, cast
 
-from autogen_core import CacheStore, CancellationToken, InMemoryStore
+from autogen_core import CacheStore, CancellationToken, Component, ComponentModel, InMemoryStore
 from autogen_core.models import (
     ChatCompletionClient,
     CreateResult,
@@ -13,11 +13,20 @@ from autogen_core.models import (
     RequestUsage,
 )
 from autogen_core.tools import Tool, ToolSchema
+from pydantic import BaseModel
+from typing_extensions import Self
 
 CHAT_CACHE_VALUE_TYPE = Union[CreateResult, List[Union[str, CreateResult]]]
 
 
-class ChatCompletionCache(ChatCompletionClient):
+class ChatCompletionCacheConfig(BaseModel):
+    """ """
+
+    client: ComponentModel
+    store: Optional[ComponentModel] = None
+
+
+class ChatCompletionCache(ChatCompletionClient, Component[ChatCompletionCacheConfig]):
     """
     A wrapper around a :class:`~autogen_ext.models.cache.ChatCompletionClient` that caches
     creation results from an underlying client.
@@ -77,6 +86,10 @@ class ChatCompletionCache(ChatCompletionClient):
             Defaults to using in-memory cache.
     """
 
+    component_type = "chat_completion_cache"
+    component_provider_override = "autogen_ext.models.cache.ChatCompletionCache"
+    component_config_schema = ChatCompletionCacheConfig
+
     def __init__(
         self,
         client: ChatCompletionClient,
@@ -89,7 +102,7 @@ class ChatCompletionCache(ChatCompletionClient):
         self,
         messages: Sequence[LLMMessage],
         tools: Sequence[Tool | ToolSchema],
-        json_output: Optional[bool],
+        json_output: Optional[bool | type[BaseModel]],
         extra_create_args: Mapping[str, Any],
     ) -> tuple[Optional[Union[CreateResult, List[Union[str, CreateResult]]]], str]:
         """
@@ -97,10 +110,17 @@ class ChatCompletionCache(ChatCompletionClient):
         Returns a tuple of (cached_result, cache_key).
         """
 
+        json_output_data: str | bool | None = None
+
+        if isinstance(json_output, type) and issubclass(json_output, BaseModel):
+            json_output_data = json.dumps(json_output.model_json_schema())
+        elif isinstance(json_output, bool):
+            json_output_data = json_output
+
         data = {
             "messages": [message.model_dump() for message in messages],
             "tools": [(tool.schema if isinstance(tool, Tool) else tool) for tool in tools],
-            "json_output": json_output,
+            "json_output": json_output_data,
             "extra_create_args": extra_create_args,
         }
         serialized_data = json.dumps(data, sort_keys=True)
@@ -117,7 +137,7 @@ class ChatCompletionCache(ChatCompletionClient):
         messages: Sequence[LLMMessage],
         *,
         tools: Sequence[Tool | ToolSchema] = [],
-        json_output: Optional[bool] = None,
+        json_output: Optional[bool | type[BaseModel]] = None,
         extra_create_args: Mapping[str, Any] = {},
         cancellation_token: Optional[CancellationToken] = None,
     ) -> CreateResult:
@@ -149,7 +169,7 @@ class ChatCompletionCache(ChatCompletionClient):
         messages: Sequence[LLMMessage],
         *,
         tools: Sequence[Tool | ToolSchema] = [],
-        json_output: Optional[bool] = None,
+        json_output: Optional[bool | type[BaseModel]] = None,
         extra_create_args: Mapping[str, Any] = {},
         cancellation_token: Optional[CancellationToken] = None,
     ) -> AsyncGenerator[Union[str, CreateResult], None]:
@@ -193,6 +213,9 @@ class ChatCompletionCache(ChatCompletionClient):
 
         return _generator()
 
+    async def close(self) -> None:
+        await self.client.close()
+
     def actual_usage(self) -> RequestUsage:
         return self.client.actual_usage()
 
@@ -213,3 +236,17 @@ class ChatCompletionCache(ChatCompletionClient):
 
     def total_usage(self) -> RequestUsage:
         return self.client.total_usage()
+
+    def _to_config(self) -> ChatCompletionCacheConfig:
+        return ChatCompletionCacheConfig(
+            client=self.client.dump_component(),
+            store=self.store.dump_component() if not isinstance(self.store, InMemoryStore) else None,
+        )
+
+    @classmethod
+    def _from_config(cls, config: ChatCompletionCacheConfig) -> Self:
+        client = ChatCompletionClient.load_component(config.client)
+        store: Optional[CacheStore[CHAT_CACHE_VALUE_TYPE]] = (
+            CacheStore.load_component(config.store) if config.store else InMemoryStore()
+        )
+        return cls(client=client, store=store)

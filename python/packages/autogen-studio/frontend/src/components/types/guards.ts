@@ -19,6 +19,8 @@ import type {
   MaxMessageTerminationConfig,
   TextMentionTerminationConfig,
   UnboundedChatCompletionContextConfig,
+  AnthropicClientConfig,
+  AndTerminationConfig,
 } from "./datamodel";
 
 // Provider constants
@@ -35,12 +37,14 @@ const PROVIDERS = {
   // Models
   OPENAI: "autogen_ext.models.openai.OpenAIChatCompletionClient",
   AZURE_OPENAI: "autogen_ext.models.openai.AzureOpenAIChatCompletionClient",
+  ANTHROPIC: "autogen_ext.models.anthropic.AnthropicChatCompletionClient",
 
   // Tools
   FUNCTION_TOOL: "autogen_core.tools.FunctionTool",
 
   // Termination
   OR_TERMINATION: "autogen_agentchat.base.OrTerminationCondition",
+  AND_TERMINATION: "autogen_agentchat.base.AndTerminationCondition",
   MAX_MESSAGE: "autogen_agentchat.conditions.MaxMessageTermination",
   TEXT_MENTION: "autogen_agentchat.conditions.TextMentionTermination",
 
@@ -56,6 +60,7 @@ type ProviderToConfig = {
   // Teams
   [PROVIDERS.SELECTOR_TEAM]: SelectorGroupChatConfig;
   [PROVIDERS.ROUND_ROBIN_TEAM]: RoundRobinGroupChatConfig;
+  [PROVIDERS.ANTHROPIC]: AnthropicClientConfig;
 
   // Agents
   [PROVIDERS.ASSISTANT_AGENT]: AssistantAgentConfig;
@@ -71,6 +76,7 @@ type ProviderToConfig = {
 
   // Termination
   [PROVIDERS.OR_TERMINATION]: OrTerminationConfig;
+  [PROVIDERS.AND_TERMINATION]: AndTerminationConfig;
   [PROVIDERS.MAX_MESSAGE]: MaxMessageTerminationConfig;
   [PROVIDERS.TEXT_MENTION]: TextMentionTerminationConfig;
 
@@ -181,6 +187,11 @@ export function isAzureOpenAIModel(
 ): component is Component<AzureOpenAIClientConfig> {
   return isComponentOfType(component, PROVIDERS.AZURE_OPENAI);
 }
+export function isAnthropicModel(
+  component: Component<ComponentConfig>
+): component is Component<AnthropicClientConfig> {
+  return component.provider === PROVIDERS.ANTHROPIC;
+}
 
 // Tool provider guards with proper type narrowing
 export function isFunctionTool(
@@ -194,6 +205,22 @@ export function isOrTermination(
   component: Component<ComponentConfig>
 ): component is Component<OrTerminationConfig> {
   return isComponentOfType(component, PROVIDERS.OR_TERMINATION);
+}
+
+// is Or or And termination
+export function isCombinationTermination(
+  component: Component<ComponentConfig>
+): component is Component<OrTerminationConfig | AndTerminationConfig> {
+  return (
+    isComponentOfType(component, PROVIDERS.OR_TERMINATION) ||
+    isComponentOfType(component, PROVIDERS.AND_TERMINATION)
+  );
+}
+
+export function isAndTermination(
+  component: Component<ComponentConfig>
+): component is Component<AndTerminationConfig> {
+  return isComponentOfType(component, PROVIDERS.AND_TERMINATION);
 }
 
 export function isMaxMessageTermination(

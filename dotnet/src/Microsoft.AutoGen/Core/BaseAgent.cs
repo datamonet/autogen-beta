@@ -4,7 +4,6 @@
 
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.Json;
 using Microsoft.AutoGen.Contracts;
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +12,7 @@ namespace Microsoft.AutoGen.Core;
 /// <summary>
 /// Represents the base class for an agent in the AutoGen system.
 /// </summary>
-public abstract class BaseAgent : IAgent, IHostableAgent
+public abstract class BaseAgent : IHostableAgent, ISaveState
 {
     /// <summary>
     /// The activity source for tracing.
@@ -93,15 +92,6 @@ public abstract class BaseAgent : IAgent, IHostableAgent
         return null;
     }
 
-    public virtual ValueTask<JsonElement> SaveStateAsync()
-    {
-        return ValueTask.FromResult(JsonDocument.Parse("{}").RootElement);
-    }
-    public virtual ValueTask LoadStateAsync(JsonElement state)
-    {
-        return ValueTask.CompletedTask;
-    }
-
     public ValueTask<object?> SendMessageAsync(object message, AgentId recepient, string? messageId = null, CancellationToken cancellationToken = default)
     {
         return this.Runtime.SendMessageAsync(message, recepient, sender: this.Id, messageId: messageId, cancellationToken: cancellationToken);
@@ -111,5 +101,20 @@ public abstract class BaseAgent : IAgent, IHostableAgent
     public ValueTask PublishMessageAsync(object message, TopicId topic, string? messageId = null, CancellationToken cancellationToken = default)
     {
         return this.Runtime.PublishMessageAsync(message, topic, sender: this.Id, messageId: messageId, cancellationToken: cancellationToken);
+    }
+
+    //public virtual ValueTask<JsonElement> SaveStateAsync()
+    //{
+    //    return new ValueTask<JsonElement>(JsonDocument.Parse("{}").RootElement);
+    //}
+
+    //public virtual ValueTask LoadStateAsync(JsonElement _)
+    //{
+    //    return ValueTask.CompletedTask;
+    //}
+
+    public virtual ValueTask CloseAsync()
+    {
+        return ValueTask.CompletedTask;
     }
 }

@@ -1,5 +1,6 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // AgentTests.cs
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AutoGen.Contracts;
 using Microsoft.Extensions.Logging;
@@ -127,7 +128,7 @@ public class AgentTests()
 
         var topicTypeName = "TestTopic";
         await runtime.PublishMessageAsync("info", new TopicId(topicTypeName));
-        await Task.Delay(100);
+        await runtime.RunUntilIdleAndRestartAsync();
 
         Assert.True(agent.ReceivedItems.Count == 0);
 
@@ -135,15 +136,72 @@ public class AgentTests()
         await runtime.AddSubscriptionAsync(subscription);
 
         await runtime.PublishMessageAsync("info", new TopicId(topicTypeName));
-        await Task.Delay(100);
+        await runtime.RunUntilIdleAndRestartAsync();
 
         Assert.True(agent.ReceivedItems.Count == 1);
         Assert.Equal("info", agent.ReceivedItems[0]);
 
         await runtime.RemoveSubscriptionAsync(subscription.Id);
         await runtime.PublishMessageAsync("info", new TopicId(topicTypeName));
-        await Task.Delay(100);
+        await runtime.RunUntilIdleAsync();
 
         Assert.True(agent.ReceivedItems.Count == 1);
+    }
+
+    public class AgentState
+    {
+        public required string Name { get; set; }
+        public required int Value { get; set; }
+    }
+
+    public class StateAgent(AgentId id,
+        IAgentRuntime runtime,
+        AgentState state,
+        Logger<BaseAgent>? logger = null) : BaseAgent(id, runtime, "Test Agent", logger),
+        ISaveStateMixin<AgentState>
+
+    {
+        ValueTask<AgentState> ISaveStateMixin<AgentState>.SaveStateImpl()
+        {
+            return ValueTask.FromResult(_state);
+        }
+
+        ValueTask ISaveStateMixin<AgentState>.LoadStateImpl(AgentState state)
+        {
+            _state = state;
+            return ValueTask.CompletedTask;
+        }
+
+        private AgentState _state = state;
+    }
+
+    [Fact]
+    public async Task StateMixinTest()
+    {
+        var runtime = new InProcessRuntime();
+        await runtime.StartAsync();
+        await runtime.RegisterAgentFactoryAsync("MyAgent", (id, runtime) =>
+        {
+            return ValueTask.FromResult(new StateAgent(id, runtime, new AgentState { Name = "TestAgent", Value = 5 }));
+        });
+
+        var agentId = new AgentId("MyAgent", "default");
+
+        // Get the state
+        var state1 = await runtime.SaveAgentStateAsync(agentId);
+
+        Assert.Equal("TestAgent", state1.GetProperty("Name").GetString());
+        Assert.Equal(5, state1.GetProperty("Value").GetInt32());
+
+        // Change the state
+        var newState = new AgentState { Name = "TestAgent", Value = 100 };
+        var jsonState = JsonSerializer.SerializeToElement(newState);
+        await runtime.LoadAgentStateAsync(agentId, jsonState);
+
+        // Get the state
+        var state2 = await runtime.SaveAgentStateAsync(agentId);
+
+        Assert.Equal("TestAgent", state2.GetProperty("Name").GetString());
+        Assert.Equal(100, state2.GetProperty("Value").GetInt32());
     }
 }

@@ -3,14 +3,21 @@
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Union
-from uuid import UUID, uuid4
 
 from autogen_core import ComponentModel
-from pydantic import ConfigDict
-from sqlalchemy import ForeignKey, Integer, false
+from pydantic import ConfigDict, SecretStr
+from sqlalchemy import ForeignKey, Integer, String
 from sqlmodel import JSON, Column, DateTime, Field, SQLModel, func
 
-from .types import MessageConfig, MessageMeta, TeamResult
+from .types import (
+    GalleryComponents,
+    GalleryConfig,
+    GalleryMetadata,
+    MessageConfig,
+    MessageMeta,
+    SettingsConfig,
+    TeamResult,
+)
 
 
 class Team(SQLModel, table=True):
@@ -42,11 +49,14 @@ class Message(SQLModel, table=True):
     )  # pylint: disable=not-callable
     user_id: Optional[str] = None
     version: Optional[str] = "0.0.1"
-    config: Union[MessageConfig, dict] = Field(default_factory=MessageConfig, sa_column=Column(JSON))
-    session_id: Optional[int] = Field(
-        default=None, sa_column=Column(Integer, ForeignKey("session.id", ondelete="CASCADE"))
+    config: Union[MessageConfig, dict] = Field(
+        default_factory=lambda: MessageConfig(source="", content=""), sa_column=Column(JSON)
     )
-    run_id: Optional[UUID] = Field(default=None, foreign_key="run.id")
+    session_id: Optional[int] = Field(
+        default=None, sa_column=Column(Integer, ForeignKey("session.id", ondelete="NO ACTION"))
+    )
+    run_id: Optional[int] = Field(default=None, sa_column=Column(Integer, ForeignKey("run.id", ondelete="CASCADE")))
+
     message_meta: Optional[Union[MessageMeta, dict]] = Field(default={}, sa_column=Column(JSON))
 
 
@@ -80,7 +90,7 @@ class Run(SQLModel, table=True):
 
     __table_args__ = {"sqlite_autoincrement": True}
 
-    id: UUID = Field(default_factory=uuid4, primary_key=True, index=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     created_at: datetime = Field(
         default_factory=datetime.now, sa_column=Column(DateTime(timezone=True), server_default=func.now())
     )
@@ -93,7 +103,9 @@ class Run(SQLModel, table=True):
     status: RunStatus = Field(default=RunStatus.CREATED)
 
     # Store the original user task
-    task: Union[MessageConfig, dict] = Field(default_factory=MessageConfig, sa_column=Column(JSON))
+    task: Union[MessageConfig, dict] = Field(
+        default_factory=lambda: MessageConfig(source="", content=""), sa_column=Column(JSON)
+    )
 
     # Store TeamResult which contains TaskResult
     team_result: Union[TeamResult, dict] = Field(default=None, sa_column=Column(JSON))
@@ -102,5 +114,53 @@ class Run(SQLModel, table=True):
     version: Optional[str] = "0.0.1"
     messages: Union[List[Message], List[dict]] = Field(default_factory=list, sa_column=Column(JSON))
 
-    model_config = ConfigDict(json_encoders={UUID: str, datetime: lambda v: v.isoformat()})
     is_charged: Optional[bool] = False # takin command:用于记录是否已经扣费，避免多次扣费,直接修改成False
+    model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})  # type: ignore[call-arg]
+    user_id: Optional[str] = None
+
+
+class Gallery(SQLModel, table=True):
+    __table_args__ = {"sqlite_autoincrement": True}
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )  # pylint: disable=not-callable
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column=Column(DateTime(timezone=True), onupdate=func.now()),
+    )  # pylint: disable=not-callable
+    user_id: Optional[str] = None
+    version: Optional[str] = "0.0.1"
+    config: Union[GalleryConfig, dict] = Field(
+        default_factory=lambda: GalleryConfig(
+            id="",
+            name="",
+            metadata=GalleryMetadata(author="", version=""),
+            components=GalleryComponents(agents=[], models=[], tools=[], terminations=[], teams=[]),
+        ),
+        sa_column=Column(JSON),
+    )
+
+    model_config = ConfigDict(
+        json_encoders={
+            datetime: lambda v: v.isoformat(),
+            SecretStr: lambda v: v.get_secret_value(),  # Add this line
+        }
+    )  # type: ignore[call-arg]
+
+
+class Settings(SQLModel, table=True):
+    __table_args__ = {"sqlite_autoincrement": True}
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )  # pylint: disable=not-callable
+    updated_at: datetime = Field(
+        default_factory=datetime.now,
+        sa_column=Column(DateTime(timezone=True), onupdate=func.now()),
+    )  # pylint: disable=not-callable
+    user_id: Optional[str] = None
+    version: Optional[str] = "0.0.1"
+    config: Union[SettingsConfig, dict] = Field(default_factory=SettingsConfig, sa_column=Column(JSON))

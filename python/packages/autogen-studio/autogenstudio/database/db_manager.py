@@ -1,3 +1,4 @@
+import json
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -12,10 +13,17 @@ from ..teammanager import TeamManager
 from .schema_manager import SchemaManager
 
 
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if hasattr(obj, "get_secret_value") and callable(obj.get_secret_value):
+            return obj.get_secret_value()
+        return super().default(obj)
+
+
 class DatabaseManager:
     _init_lock = threading.Lock()
 
-    def __init__(self, engine_uri: str, base_dir: Optional[Path] = None):
+    def __init__(self, engine_uri: str, base_dir: Optional[Union[str, Path]] = None) -> None:
         """
         Initialize DatabaseManager with database connection settings.
         Does not perform any database operations.
@@ -26,11 +34,23 @@ class DatabaseManager:
         """
         connection_args = {"check_same_thread": True} if "sqlite" in engine_uri else {}
 
-        self.engine = create_engine(engine_uri, connect_args=connection_args)
+        if base_dir is not None and isinstance(base_dir, str):
+            base_dir = Path(base_dir)
+
+        self.engine = create_engine(
+            engine_uri, connect_args=connection_args, json_serializer=lambda obj: json.dumps(obj, cls=CustomJSONEncoder)
+        )
         self.schema_manager = SchemaManager(
             engine=self.engine,
             base_dir=base_dir,
         )
+
+    def _should_auto_upgrade(self) -> bool:
+        """
+        Check if auto upgrade should run based on schema differences
+        """
+        needs_upgrade, _ = self.schema_manager.check_schema_status()
+        return needs_upgrade
 
     def initialize_database(self, auto_upgrade: bool = False, force_init_alembic: bool = True) -> Response:
         """
@@ -44,11 +64,13 @@ class DatabaseManager:
             return Response(message="Database initialization already in progress", status=False)
 
         try:
+            # Enable foreign key constraints for SQLite
+            if "sqlite" in str(self.engine.url):
+                with self.engine.connect() as conn:
+                    conn.execute(text("PRAGMA foreign_keys=ON"))
             inspector = inspect(self.engine)
             tables_exist = inspector.get_table_names()
-
             if not tables_exist:
-                # Fresh install - create tables and initialize migrations
                 logger.info("Creating database tables...")
                 SQLModel.metadata.create_all(self.engine)
 
@@ -57,9 +79,9 @@ class DatabaseManager:
                 return Response(message="Failed to initialize migrations", status=False)
 
             # Handle existing database
-            if auto_upgrade:
+            if auto_upgrade or self._should_auto_upgrade():
                 logger.info("Checking database schema...")
-                if self.schema_manager.ensure_schema_up_to_date():  # <-- Use this instead
+                if self.schema_manager.ensure_schema_up_to_date():
                     return Response(message="Database schema is up to date", status=True)
                 return Response(message="Database upgrade failed", status=False)
 
@@ -91,7 +113,7 @@ class DatabaseManager:
                 try:
                     # Disable foreign key checks for SQLite
                     if "sqlite" in str(self.engine.url):
-                        session.exec(text("PRAGMA foreign_keys=OFF"))
+                        session.exec(text("PRAGMA foreign_keys=OFF"))  # type: ignore
 
                     # Drop all tables
                     SQLModel.metadata.drop_all(self.engine)
@@ -99,7 +121,7 @@ class DatabaseManager:
 
                     # Re-enable foreign key checks for SQLite
                     if "sqlite" in str(self.engine.url):
-                        session.exec(text("PRAGMA foreign_keys=ON"))
+                        session.exec(text("PRAGMA foreign_keys=ON"))  # type: ignore
 
                     session.commit()
 
@@ -129,7 +151,7 @@ class DatabaseManager:
                 self._init_lock.release()
                 logger.info("Database reset lock released")
 
-    def upsert(self, model: SQLModel, return_json: bool = True):
+    def upsert(self, model: SQLModel, return_json: bool = True) -> Response:
         """Create or update an entity
 
         Args:
@@ -151,7 +173,7 @@ class DatabaseManager:
                     model.updated_at = datetime.now()
                     for key, value in model.model_dump().items():
                         setattr(existing_model, key, value)
-                    model = existing_model  # Use the updated existing model
+                    model = existing_model
                     session.add(model)
                 else:
                     session.add(model)
@@ -178,7 +200,7 @@ class DatabaseManager:
     def get(
         self,
         model_class: SQLModel,
-        filters: dict = None,
+        filters: dict | None = None,
         return_json: bool = False,
         order: str = "desc",
     ):
@@ -209,13 +231,15 @@ class DatabaseManager:
 
             return Response(message=status_message, status=status, data=result)
 
-    def delete(self, model_class: SQLModel, filters: dict = None):
+    def delete(self, model_class: SQLModel, filters: dict = None) -> Response:
         """Delete an entity"""
         status_message = ""
         status = True
 
         with Session(self.engine) as session:
             try:
+                if "sqlite" in str(self.engine.url):
+                    session.exec(text("PRAGMA foreign_keys=ON"))
                 statement = select(model_class)
                 if filters:
                     conditions = [getattr(model_class, col) == value for col, value in filters.items()]
@@ -265,7 +289,7 @@ class DatabaseManager:
                     )
 
             # Store in database
-            team_db = Team(user_id=user_id, config=config)
+            team_db = Team(user_id=user_id, component=config)
 
             result = self.upsert(team_db)
             return result
@@ -321,7 +345,7 @@ class DatabaseManager:
         teams = self.get(Team, {"user_id": user_id}).data
 
         for team in teams:
-            if team.config == config:
+            if team.component == config:
                 return team
 
         return None
