@@ -2,6 +2,7 @@ import React, { useEffect } from "react";
 import { navigate } from "gatsby";
 import { useAuth } from "./context";
 import { Spin } from "antd";
+import { getTakinServerUrl } from "../components/utils/utils";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -13,11 +14,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   redirectTo = "/login",
 }) => {
   const { isAuthenticated, isLoading, authType } = useAuth();
-
+  const takinServerUrl = getTakinServerUrl();
   useEffect(() => {
+    console.log("ProtectedRoute: isAuthenticated", isAuthenticated, isLoading, authType);
     // If not loading and auth is required (not 'none') and user is not authenticated, redirect
     if (!isLoading && authType !== "none" && !isAuthenticated) {
-      navigate(redirectTo);
+      navigate(`${takinServerUrl}/login`);
     }
   }, [isAuthenticated, isLoading, authType, redirectTo]);
 

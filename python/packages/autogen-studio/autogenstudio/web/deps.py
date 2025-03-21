@@ -93,11 +93,12 @@ def init_auth_manager(config_dir: Path) -> AuthManager:
         except Exception as e:
             logger.error(f"Failed to initialize authentication from config file: {str(e)}")
             logger.warning("Falling back to no authentication")
-
-    # Default or fallback
-    config = AuthConfig(type="none")
-    auth_manager = AuthManager(config)
-    logger.info("Authentication disabled (no config provided)")
+    else:
+        auth_manager = AuthManager.from_env()
+    # # Default or fallback
+    # config = AuthConfig(type="none")
+    # auth_manager = AuthManager(config)
+    # logger.info("Authentication disabled (no config provided)")
     return auth_manager
 
 

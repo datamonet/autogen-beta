@@ -21,6 +21,7 @@ import { appContext } from "../hooks/provider";
 import { Link } from "gatsby";
 import React from "react";
 import { AirVent } from "lucide-react";
+import { sanitizeUrl } from "./utils/security-utils";
 
 function classNames(...classes: string[]) {
   return classes.filter(Boolean).join(" ");
@@ -262,7 +263,7 @@ const Header = ({ meta, link }: any) => {
                   </button>
                 </div>
                 <div className="mt-3 space-y-1">
-                  <Disclosure.Button
+                  <DisclosureButton
                     onClick={() => logout()}
                     className="block px-4 py-2 text-base font-medium text-secondary hover:text-primary "
                   >

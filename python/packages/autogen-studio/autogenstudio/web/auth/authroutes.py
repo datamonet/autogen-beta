@@ -179,13 +179,7 @@ async def handle_callback(request: Request, auth_manager: AuthManager = Depends(
 @router.get("/me")
 async def get_user_info(current_user: User = Depends(get_current_user)):
     """Get information about the currently authenticated user."""
-    return {
-        "id": current_user.id,
-        "name": current_user.name,
-        "email": current_user.email,
-        "provider": current_user.provider,
-        "roles": current_user.roles,
-    }
+    return current_user
 
 
 @router.get("/type")

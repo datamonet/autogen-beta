@@ -49,6 +49,32 @@ class NoAuthProvider(AuthProvider):
         """Validate a provider token and return boolean indicating validity."""
         return True
 
+class TakinAuthProvider(AuthProvider):
+    """Default provider that always authenticates (for development)."""
+
+    def __init__(self, config: AuthConfig):
+        self.config = config
+        self.takin_api_url = os.getenv('TAKIN_API_URL')
+
+    async def get_login_url(self) -> str:
+        """Return the URL for initiating login."""
+        return f"{self.takin_api_url}/login"
+
+    async def process_callback(self, code: str | None = None, state: str | None = None) -> User:
+        """Process the OAuth callback code and return user data."""
+        return self.default_user
+
+    async def validate_token(self, token: str) -> bool:
+        """Validate a provider token and return boolean indicating validity."""
+        if not self.config.jwt_secret:
+            return True  # No validation in dev mode
+
+        try:
+            jwt.decode(token, self.config.jwt_secret, algorithms=["HS256"])
+            return True
+        except jwt.ExpiredSignatureError:
+            logger.warning("Token has expired")
+            return False
 
 class GithubAuthProvider(AuthProvider):
     """GitHub OAuth authentication provider."""

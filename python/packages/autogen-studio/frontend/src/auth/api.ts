@@ -70,9 +70,10 @@ export class AuthAPI {
     }
   }
 
-  async getCurrentUser(token: string): Promise<User> {
+  async getCurrentUser(token?: string): Promise<User> {
     try {
       const response = await fetch(`${this.getBaseUrl()}/auth/me`, {
+        credentials: 'include',
         headers: this.getHeaders(token),
       });
 

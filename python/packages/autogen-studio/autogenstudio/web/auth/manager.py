@@ -1,4 +1,5 @@
 import os
+import httpx
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
@@ -10,7 +11,7 @@ from typing_extensions import Self
 
 from .exceptions import ConfigurationException, InvalidTokenException, MissingTokenException
 from .models import AuthConfig, User
-from .providers import AuthProvider, FirebaseAuthProvider, GithubAuthProvider, MSALAuthProvider, NoAuthProvider
+from .providers import AuthProvider, FirebaseAuthProvider, GithubAuthProvider, MSALAuthProvider, NoAuthProvider, TakinAuthProvider
 
 
 class AuthManager:
@@ -34,6 +35,8 @@ class AuthManager:
                 return MSALAuthProvider(self.config)
             elif self.config.type == "firebase":
                 return FirebaseAuthProvider(self.config)
+            elif self.config.type == "takin":
+                return TakinAuthProvider(self.config)
             else:
                 return NoAuthProvider()
         except Exception as e:
@@ -62,14 +65,6 @@ class AuthManager:
         """Authenticate a request and return user information."""
         # Check if path should be excluded from auth
         # print("************ authenticating request ************", request.url.path, self.config.type )
-        # if request.url.path in self.config.exclude_paths:
-        #     return User(id="guestuser@gmail.com", name="Default User", provider="none")
-
-        # if self.config.type == "none":
-        #     # No auth mode - return default user
-        #     return User(id="guestuser@gmail.com", name="Default User", provider="none")
-
-        # Extract token from Authorization header
         cookie_name = "__Secure-authjs.session-token" if os.getenv("DEPLOY_ENV") == "production" else "authjs.session-token"
         takin_api_url = os.getenv('TAKIN_API_URL')
        
@@ -91,6 +86,7 @@ class AuthManager:
                 id=user.get("id"),
                 name=user.get("name"),
                 email=user.get("email"),
+                avatar_url=user.get("images"),
                 provider=user.get("provider"),
                 roles=[user.get("role", "user")],
                 extraCredits=user.get("extraCredits", 0),

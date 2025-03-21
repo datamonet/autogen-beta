@@ -13,7 +13,7 @@ import {
   Rocket,
 } from "lucide-react";
 import Icon from "./icons";
-import { getTakinServerUrl } from "./utils";
+import { getTakinServerUrl } from "./utils/utils";
 
 interface INavItem {
   name: string;

@@ -10,8 +10,8 @@ import { ChevronDown, Menu as MenuIcon } from "lucide-react";
 import { appContext } from "../hooks/provider";
 import { useConfigStore } from "../hooks/store";
 import { Link } from "gatsby";
-import { getTakinServerUrl } from "./utils";
-import { sanitizeUrl } from "./utils/security-utils";
+import { getTakinServerUrl } from "./utils/utils";
+
 
 type ContentHeaderProps = {
   onMobileMenuToggle: () => void;
@@ -27,7 +27,7 @@ const ContentHeader = ({
   isMobileMenuOpen,
 }: ContentHeaderProps) => {
   const takinServerUrl = getTakinServerUrl();
-  const { darkMode, setDarkMode, user, logout } = React.useContext(appContext);
+  const { user, logout } = React.useContext(appContext);
   const { sidebar, setSidebarState, header } = useConfigStore();
   const { isExpanded } = sidebar;
   const { title, breadcrumbs } = header;
@@ -109,7 +109,7 @@ const ContentHeader = ({
           {/* Right side header items */}
           <div className="flex items-center gap-x-4 lg:gap-x-6 ml-auto">
             {/* Search */}
-            <form className="relative flex hidden h-8">
+            <form className="relative flex h-8">
               <label htmlFor="search-field" className="sr-only">
                 Search
               </label>
@@ -159,11 +159,11 @@ const ContentHeader = ({
             {/* User Menu */}
             {user && (
               <Menu as="div" className="relative">
-                <Menu.Button className="flex items-center">
-                  {user.image ? (
+                <MenuButton className="flex items-center">
+                  {user.avatar_url ? (
                     <img
                       className="h-8 w-8 rounded-full"
-                      src={user.image}
+                      src={user.avatar_url}
                       alt={user.name}
                     />
                   ) : (
@@ -182,14 +182,14 @@ const ContentHeader = ({
                   <MenuItem>
                     {({ active }) => (
                       <a
-                        href={user.role.toLowerCase() === 'admin' ? `/settings` : `${takinServerUrl}/settings`}
+                        href={user.role[0].toLowerCase() === 'admin' ? `/settings` : `${takinServerUrl}/settings`}
                         className={classNames(active ? 'bg-secondary' : '', 'block px-4 py-2 text-sm text-primary')}
                       >
                         Settings
                       </a>
                     )}
-                  </Menu.Item>
-                  <Menu.Item>
+                  </MenuItem>
+                  <MenuItem>
                     {({ active }) => (
                       <div
                         onClick={() => logout()}

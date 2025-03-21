@@ -29,6 +29,7 @@ export function getCookie(name: string) {
   }
   return null;
 }
+
 export function setLocalStorage(
   name: string,
   value: any,

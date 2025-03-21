@@ -28,7 +28,7 @@ class FirebaseAuthConfig(BaseModel):
 class AuthConfig(BaseModel):
     """Authentication configuration model for the application."""
 
-    type: Literal["none", "github", "msal", "firebase"] = "none"
+    type: Literal["none", "github", "msal", "firebase", "takin"] = "none"
     github: Optional[GithubAuthConfig] = None
     msal: Optional[MSALAuthConfig] = None
     firebase: Optional[FirebaseAuthConfig] = None

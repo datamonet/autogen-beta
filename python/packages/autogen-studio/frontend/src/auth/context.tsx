@@ -9,19 +9,28 @@ import {
   isValidUserObject,
 } from "../components/utils/security-utils";
 
+import {
+  getCookie,
+  getTakinServerUrl
+} from "../components/utils/utils";
+
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   authType: string;
+  cookie_name: string;
   login: () => Promise<string>;
   logout: () => void;
-  handleAuthCallback: (code: string, state?: string) => Promise<void>;
+  // handleAuthCallback: (code: string, state?: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const TOKEN_KEY = "auth_token";
+const cookie_name = process.env.NODE_ENV === "development"
+  ? "authjs.session-token"
+  : "__Secure-authjs.session-token";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -29,20 +38,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [authType, setAuthType] = useState<string>("none");
-
-  // Function to get token from localStorage
+  const takinServerUrl = getTakinServerUrl();
+  // Function to get token from localStorage  
   const getToken = (): string | null => {
-    return localStorage.getItem(TOKEN_KEY);
+    return getCookie(cookie_name);
   };
 
-  // Function to save token to localStorage
-  const saveToken = (token: string): void => {
-    localStorage.setItem(TOKEN_KEY, token);
-  };
+
 
   // Function to remove token from localStorage
   const removeToken = (): void => {
     localStorage.removeItem(TOKEN_KEY);
+
   };
 
   // Load user on initial render if token exists
@@ -51,26 +58,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       try {
         // Check auth type first
         const { type } = await authAPI.checkAuthType();
+        console.log("Auth type:", type);
         setAuthType(type);
 
-        // If auth is disabled, set default user and complete loading
-        if (type === "none") {
-          setUser({
-            id: "guestuser@gmail.com",
-            name: "Guest User",
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        const token = getToken();
-        if (!token) {
-          setIsLoading(false);
-          return;
-        }
-
         // Load user data with token
-        const userData = await authAPI.getCurrentUser(token);
+        const userData = await authAPI.getCurrentUser();
+
         setUser(userData);
       } catch (error) {
         console.error("Failed to load user:", error);
@@ -106,7 +99,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         }
 
         // Store token
-        saveToken(data.token);
+        // saveToken(data.token);
 
         // Update user state
         setUser(data.user);
@@ -146,33 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Handle auth callback from provider
-  const handleAuthCallback = async (
-    code: string,
-    state?: string
-  ): Promise<void> => {
-    try {
-      // For popup window approach
-      if (window.opener) {
-        // This is handled by the backend HTML response
-        // Just display a message in the popup
-        message.success(
-          "Authentication successful! You can close this window."
-        );
-        return;
-      }
 
-      // For direct redirect approach (backup)
-      const { token, user } = await authAPI.handleCallback(code, state);
-      saveToken(token);
-      setUser(user);
-      message.success("Successfully logged in");
-      navigate("/"); // Redirect to home after successful login
-    } catch (error) {
-      message.error("Authentication failed");
-      console.error("Auth callback error:", error);
-    }
-  };
 
   // Logout function
   const logout = (): void => {
@@ -187,9 +154,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isAuthenticated: !!user,
     isLoading,
     authType,
+    cookie_name,
     login,
     logout,
-    handleAuthCallback,
+
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -204,9 +172,10 @@ export const useAuth = (): AuthContextType => {
       isAuthenticated: false,
       isLoading: true,
       authType: "none",
+      cookie_name: "",
       login: async () => "",
-      logout: () => {},
-      handleAuthCallback: async () => {},
+      logout: () => { },
+      // handleAuthCallback: async () => {},
     } as AuthContextType;
   }
   const context = useContext(AuthContext);
