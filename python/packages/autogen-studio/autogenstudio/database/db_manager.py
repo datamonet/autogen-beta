@@ -48,7 +48,7 @@ class DatabaseManager:
             engine=self.engine,
             base_dir=base_dir,
         )
-        )
+        
 
     def _should_auto_upgrade(self) -> bool:
         """
