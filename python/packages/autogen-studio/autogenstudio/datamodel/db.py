@@ -114,7 +114,7 @@ class Run(SQLModel, table=True):
     version: Optional[str] = "0.0.1"
     messages: Union[List[Message], List[dict]] = Field(default_factory=list, sa_column=Column(JSON))
 
-    is_charged: Optional[bool] = False # takin command:用于记录是否已经扣费，避免多次扣费,直接修改成False
+    is_charged: Optional[bool] = False # takin code:用于记录是否已经扣费，避免多次扣费,直接修改成False
     model_config = ConfigDict(json_encoders={datetime: lambda v: v.isoformat()})  # type: ignore[call-arg]
     user_id: Optional[str] = None
 

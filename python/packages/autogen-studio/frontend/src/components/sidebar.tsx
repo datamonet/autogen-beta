@@ -45,7 +45,7 @@ const navigation: INavItem[] = [
     icon: GalleryHorizontalEnd,
     breadcrumbs: [{ name: "Gallery", href: "/gallery", current: true }],
   },
-  // takin command:不需要显示deploy
+  // takin code:不需要显示deploy
   // {
   //   name: "Deploy",
   //   href: "/deploy",
@@ -198,7 +198,7 @@ const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
             </ul>
           </li>
 
-          {/* takin command：隐藏设置页面，内部装有一个设置，Show LLM Events：true */}
+          {/* takin code：隐藏设置页面，内部装有一个设置，Show LLM Events：true */}
           {/* Settings at bottom */}
 
           {/* <li

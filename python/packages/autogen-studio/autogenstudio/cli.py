@@ -26,11 +26,11 @@ def get_env_file_path():
 @app.command()
 def ui(
     host: str = "127.0.0.1",
-    port: int = 3003, # takin command:直接修改成3003
+    port: int = 3003, # takin code:直接修改成3003
     workers: int = 1,
     reload: Annotated[bool, typer.Option("--reload")] = False,
     docs: bool = True,
-    appdir: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".autogenstudio-workspace"), # takin command:本地启动将appdir修改成.autogenstudio-workspace
+    appdir: str = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".autogenstudio-workspace"), # takin code:本地启动将appdir修改成.autogenstudio-workspace
     database_uri: Optional[str] = None,
     auth_config: Optional[str] = None,
     upgrade_database: bool = False,
@@ -70,7 +70,7 @@ def ui(
 
     # Create temporary env file to share configuration with uvicorn workers
     # env_file_path = get_env_file_path()
-    # takin command:上面的env导入是固定的。将其修改为在工作目录下导入
+    # takin code:上面的env导入是固定的。将其修改为在工作目录下导入
     env_file_path = os.path.join(appdir, ".env")
     # with open(env_file_path, "w") as temp_env:
     #     for key, value in env_vars.items():

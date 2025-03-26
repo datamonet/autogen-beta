@@ -1,6 +1,6 @@
 import { IStatus } from "../types/app";
 
-// takin command：获取Takin Server Url
+// takin code：获取Takin Server Url
 export const getTakinServerUrl = () => {
   return process.env.GATSBY_TAKIN_API_URL || "http://localhost:3000";
 };

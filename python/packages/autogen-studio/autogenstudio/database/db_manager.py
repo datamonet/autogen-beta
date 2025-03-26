@@ -38,11 +38,16 @@ class DatabaseManager:
             base_dir = Path(base_dir)
 
         self.engine = create_engine(
-            engine_uri, connect_args=connection_args, json_serializer=lambda obj: json.dumps(obj, cls=CustomJSONEncoder)
+            engine_uri,
+            pool_recycle=3600,  # takin code：每小时回收连接
+            pool_pre_ping=True,  # takin code：使用前测试连接
+            connect_args=connection_args,
+            json_serializer=lambda obj: json.dumps(obj, cls=CustomJSONEncoder)
         )
         self.schema_manager = SchemaManager(
             engine=self.engine,
             base_dir=base_dir,
+        )
         )
 
     def _should_auto_upgrade(self) -> bool:

@@ -72,7 +72,7 @@ class CostRequest(BaseModel):
 
 @router.post("/cost")
 async def cost(request: Request,cost_data: CostRequest, db=Depends(get_db)) -> Dict:
-    """takin command:Calculate cost based on run details and user information
+    """takin code:Calculate cost based on run details and user information
     
     Args:
         run_id (UUID): The ID of the run to calculate cost for

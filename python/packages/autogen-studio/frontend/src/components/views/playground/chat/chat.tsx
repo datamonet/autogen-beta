@@ -241,10 +241,10 @@ export default function ChatView({
               setCurrentRun((prev) =>
                 prev
                   ? {
-                      ...prev,
-                      status: "stopped",
-                      error_message: TIMEOUT_CONFIG.DEFAULT_MESSAGE,
-                    }
+                    ...prev,
+                    status: "stopped",
+                    error_message: TIMEOUT_CONFIG.DEFAULT_MESSAGE,
+                  }
                   : null
               );
             }
@@ -261,8 +261,8 @@ export default function ChatView({
             message.status === "complete"
               ? "complete"
               : message.status === "error"
-              ? "error"
-              : "stopped";
+                ? "error"
+                : "stopped";
 
           const isTeamResult = (data: any): data is TeamResult => {
             return (
@@ -292,10 +292,10 @@ export default function ChatView({
               activeSocketRef.current = null;
             }
 
-            // takin command:扣费 Call cost API when run completes
+            // takin code:扣费 Call cost API when run completes
             const callCostApi = async () => {
               if (current.id) {
-              
+
                 try {
                   {/**
                      // TODO: 这里一开始应该拿到team的配置，根据每个agent的具体的model配置，配合task的message中的token数，计算出真实消耗
@@ -304,13 +304,13 @@ export default function ChatView({
 
                      目前autogen只支持了一个gpt-4o-mini模型
                      */}
-                 
-                  
-                  const config = teamConfig?.config?.participants[0].config.model_client.config || {model: 'gpt-4o-mini'} 
-                 
+
+
+                  const config = teamConfig?.config?.participants[0].config.model_client.config || { model: 'gpt-4o-mini' }
+
                   const response = await fetch(`${getServerUrl()}/users/cost`, {
                     method: "POST",
-                    body: JSON.stringify({...config, run_id: current.id}),
+                    body: JSON.stringify({ ...config, run_id: current.id }),
                     headers: { "Content-Type": "application/json" },
                     credentials: "include"
                   });
@@ -328,7 +328,7 @@ export default function ChatView({
             // Execute the cost API call
             callCostApi();
 
-            console.log(current.id,teamConfig,updatedRun)
+            console.log(current.id, teamConfig, updatedRun)
             setExistingRuns((prev) => [...prev, updatedRun]);
             return null;
           }
@@ -572,7 +572,7 @@ export default function ChatView({
             <SessionDropdown
               session={session}
               availableSessions={availableSessions}
-              onSessionChange={onSessionChange || (() => {})}
+              onSessionChange={onSessionChange || (() => { })}
               className="w-full"
             />
           ) : (
