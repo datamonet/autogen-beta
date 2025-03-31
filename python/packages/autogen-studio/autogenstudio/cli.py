@@ -1,5 +1,4 @@
 import os
-import tempfile
 import warnings
 from typing import Optional
 
@@ -94,6 +93,7 @@ def serve(
     host: str = "127.0.0.1",
     port: int = 8084,
     workers: int = 1,
+    reload: Annotated[bool, typer.Option("--reload")] = False,
     docs: bool = False,
 ):
     """
@@ -121,7 +121,7 @@ def serve(
         host=host,
         port=port,
         workers=workers,
-        reload=False,
+        reload=reload,
     )
 
 

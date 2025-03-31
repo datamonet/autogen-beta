@@ -31,7 +31,6 @@ from autogen_core.models import (
     LLMMessage,
     ModelFamily,
     SystemMessage,
-    UserMessage,
 )
 from autogen_core.tools import BaseTool, FunctionTool
 from pydantic import BaseModel
@@ -41,8 +40,8 @@ from .. import EVENT_LOGGER_NAME
 from ..base import Handoff as HandoffBase
 from ..base import Response
 from ..messages import (
-    AgentEvent,
-    ChatMessage,
+    BaseAgentEvent,
+    BaseChatMessage,
     HandoffMessage,
     MemoryQueryEvent,
     ModelClientStreamingChunkEvent,
@@ -73,6 +72,7 @@ class AssistantAgentConfig(BaseModel):
     model_client_stream: bool = False
     reflect_on_tool_use: bool
     tool_call_summary_format: str
+    metadata: Dict[str, str] | None = None
 
 
 class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
@@ -169,6 +169,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
             Available variables: `{tool_name}`, `{arguments}`, `{result}`.
             For example, `"{tool_name}: {result}"` will create a summary like `"tool_name: result"`.
         memory (Sequence[Memory] | None, optional): The memory store to use for the agent. Defaults to `None`.
+        metadata (Dict[str, str] | None, optional): Optional metadata for tracking.
 
     Raises:
         ValueError: If tool names are not unique.
@@ -613,8 +614,10 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
         reflect_on_tool_use: bool = False,
         tool_call_summary_format: str = "{result}",
         memory: Sequence[Memory] | None = None,
+        metadata: Dict[str, str] | None = None,
     ):
         super().__init__(name=name, description=description)
+        self._metadata = metadata or {}
         if reflect_on_tool_use and ModelFamily.is_claude(model_client.model_info["family"]):
             warnings.warn(
                 "Claude models may not work with reflection on tool use because Claude requires that any requests including a previous tool use or tool result must include the original tools definition."
@@ -694,23 +697,30 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
         self._is_running = False
 
     @property
-    def produced_message_types(self) -> Sequence[type[ChatMessage]]:
-        message_types: List[type[ChatMessage]] = [TextMessage]
+    def produced_message_types(self) -> Sequence[type[BaseChatMessage]]:
+        message_types: List[type[BaseChatMessage]] = [TextMessage]
         if self._handoffs:
             message_types.append(HandoffMessage)
         if self._tools:
             message_types.append(ToolCallSummaryMessage)
         return tuple(message_types)
 
-    async def on_messages(self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken) -> Response:
+    @property
+    def model_context(self) -> ChatCompletionContext:
+        """
+        The model context in use by the agent.
+        """
+        return self._model_context
+
+    async def on_messages(self, messages: Sequence[BaseChatMessage], cancellation_token: CancellationToken) -> Response:
         async for message in self.on_messages_stream(messages, cancellation_token):
             if isinstance(message, Response):
                 return message
         raise AssertionError("The stream should have returned the final result.")
 
     async def on_messages_stream(
-        self, messages: Sequence[ChatMessage], cancellation_token: CancellationToken
-    ) -> AsyncGenerator[AgentEvent | ChatMessage | Response, None]:
+        self, messages: Sequence[BaseChatMessage], cancellation_token: CancellationToken
+    ) -> AsyncGenerator[BaseAgentEvent | BaseChatMessage | Response, None]:
         """
         Process the incoming messages with the assistant agent and yield events/responses as they happen.
         """
@@ -735,7 +745,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
         )
 
         # STEP 2: Update model context with any relevant memory
-        inner_messages: List[AgentEvent | ChatMessage] = []
+        inner_messages: List[BaseAgentEvent | BaseChatMessage] = []
         for event_msg in await self._update_model_context_with_memory(
             memory=memory,
             model_context=model_context,
@@ -800,17 +810,16 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
     @staticmethod
     async def _add_messages_to_context(
         model_context: ChatCompletionContext,
-        messages: Sequence[ChatMessage],
+        messages: Sequence[BaseChatMessage],
     ) -> None:
         """
-        Add incoming user (and possibly handoff) messages to the model context.
+        Add incoming messages to the model context.
         """
         for msg in messages:
             if isinstance(msg, HandoffMessage):
-                # Add handoff context to the model context.
-                for context_msg in msg.context:
-                    await model_context.add_message(context_msg)
-            await model_context.add_message(UserMessage(content=msg.content, source=msg.source))
+                for llm_msg in msg.context:
+                    await model_context.add_message(llm_msg)
+            await model_context.add_message(msg.to_model_message())
 
     @staticmethod
     async def _update_model_context_with_memory(
@@ -877,7 +886,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
     async def _process_model_result(
         cls,
         model_result: CreateResult,
-        inner_messages: List[AgentEvent | ChatMessage],
+        inner_messages: List[BaseAgentEvent | BaseChatMessage],
         cancellation_token: CancellationToken,
         agent_name: str,
         system_messages: List[SystemMessage],
@@ -889,7 +898,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
         model_client_stream: bool,
         reflect_on_tool_use: bool,
         tool_call_summary_format: str,
-    ) -> AsyncGenerator[AgentEvent | ChatMessage | Response, None]:
+    ) -> AsyncGenerator[BaseAgentEvent | BaseChatMessage | Response, None]:
         """
         Handle final or partial responses from model_result, including tool calls, handoffs,
         and reflection if needed.
@@ -983,7 +992,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
     def _check_and_handle_handoff(
         model_result: CreateResult,
         executed_calls_and_results: List[Tuple[FunctionCall, FunctionExecutionResult]],
-        inner_messages: List[AgentEvent | ChatMessage],
+        inner_messages: List[BaseAgentEvent | BaseChatMessage],
         handoffs: Dict[str, HandoffBase],
         agent_name: str,
     ) -> Optional[Response]:
@@ -1011,10 +1020,14 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
             # Collect normal tool calls (not handoff) into the handoff context
             tool_calls: List[FunctionCall] = []
             tool_call_results: List[FunctionExecutionResult] = []
+            # Collect the results returned by handoff_tool. By default, the message attribute will returned.
+            selected_handoff_message = selected_handoff.message
             for exec_call, exec_result in executed_calls_and_results:
                 if exec_call.name not in handoffs:
                     tool_calls.append(exec_call)
                     tool_call_results.append(exec_result)
+                elif exec_call.name == selected_handoff.name:
+                    selected_handoff_message = exec_result.content
 
             handoff_context: List[LLMMessage] = []
             if len(tool_calls) > 0:
@@ -1031,7 +1044,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
             # Return response for the first handoff
             return Response(
                 chat_message=HandoffMessage(
-                    content=selected_handoff.message,
+                    content=selected_handoff_message,
                     target=selected_handoff.target,
                     source=agent_name,
                     context=handoff_context,
@@ -1048,7 +1061,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
         model_client_stream: bool,
         model_context: ChatCompletionContext,
         agent_name: str,
-        inner_messages: List[AgentEvent | ChatMessage],
+        inner_messages: List[BaseAgentEvent | BaseChatMessage],
     ) -> AsyncGenerator[Response | ModelClientStreamingChunkEvent | ThoughtEvent, None]:
         """
         If reflect_on_tool_use=True, we do another inference based on tool results
@@ -1100,7 +1113,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
     @staticmethod
     def _summarize_tool_use(
         executed_calls_and_results: List[Tuple[FunctionCall, FunctionExecutionResult]],
-        inner_messages: List[AgentEvent | ChatMessage],
+        inner_messages: List[BaseAgentEvent | BaseChatMessage],
         handoffs: Dict[str, HandoffBase],
         tool_call_summary_format: str,
         agent_name: str,
@@ -1207,6 +1220,7 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
             model_client_stream=self._model_client_stream,
             reflect_on_tool_use=self._reflect_on_tool_use,
             tool_call_summary_format=self._tool_call_summary_format,
+            metadata=self._metadata,
         )
 
     @classmethod
@@ -1224,4 +1238,5 @@ class AssistantAgent(BaseChatAgent, Component[AssistantAgentConfig]):
             model_client_stream=config.model_client_stream,
             reflect_on_tool_use=config.reflect_on_tool_use,
             tool_call_summary_format=config.tool_call_summary_format,
+            metadata=config.metadata,
         )
