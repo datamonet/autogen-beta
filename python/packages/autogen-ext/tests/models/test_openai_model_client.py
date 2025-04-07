@@ -29,6 +29,8 @@ from autogen_ext.models.openai._openai_client import (
     convert_tools,
     to_oai_type,
 )
+from autogen_ext.models.openai._transformation import TransformerMap, get_transformer
+from autogen_ext.models.openai._transformation.registry import _find_model_family  # pyright: ignore[reportPrivateUsage]
 from openai.resources.beta.chat.completions import (  # type: ignore
     AsyncChatCompletionStreamManager as BetaAsyncChatCompletionStreamManager,  # type: ignore
 )
@@ -1602,6 +1604,10 @@ def openai_client(request: pytest.FixtureRequest) -> OpenAIChatCompletionClient:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             pytest.skip("GEMINI_API_KEY not found in environment variables")
+    elif model.startswith("claude"):
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            pytest.skip("ANTHROPIC_API_KEY not found in environment variables")
     else:
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
@@ -1616,7 +1622,7 @@ def openai_client(request: pytest.FixtureRequest) -> OpenAIChatCompletionClient:
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "model",
-    ["gpt-4o-mini", "gemini-1.5-flash"],
+    ["gpt-4o-mini", "gemini-1.5-flash", "claude-3-5-haiku-20241022"],
 )
 async def test_model_client_basic_completion(model: str, openai_client: OpenAIChatCompletionClient) -> None:
     # Test basic completion
@@ -1633,13 +1639,15 @@ async def test_model_client_basic_completion(model: str, openai_client: OpenAICh
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "model",
-    ["gpt-4o-mini", "gemini-1.5-flash"],
+    ["gpt-4o-mini", "gemini-1.5-flash", "claude-3-5-haiku-20241022"],
 )
 async def test_model_client_with_function_calling(model: str, openai_client: OpenAIChatCompletionClient) -> None:
     # Test tool calling
     pass_tool = FunctionTool(_pass_function, name="pass_tool", description="pass session.")
     fail_tool = FunctionTool(_fail_function, name="fail_tool", description="fail session.")
-    messages: List[LLMMessage] = [UserMessage(content="Call the pass tool with input 'task'", source="user")]
+    messages: List[LLMMessage] = [
+        UserMessage(content="Call the pass tool with input 'task' and talk result", source="user")
+    ]
     create_result = await openai_client.create(messages=messages, tools=[pass_tool, fail_tool])
     assert isinstance(create_result.content, list)
     assert len(create_result.content) == 1
@@ -1670,7 +1678,8 @@ async def test_model_client_with_function_calling(model: str, openai_client: Ope
     # Test parallel tool calling
     messages = [
         UserMessage(
-            content="Call both the pass tool with input 'task' and the fail tool also with input 'task'", source="user"
+            content="Call both the pass tool with input 'task' and the fail tool also with input 'task' and talk result",
+            source="user",
         )
     ]
     create_result = await openai_client.create(messages=messages, tools=[pass_tool, fail_tool])
@@ -2065,7 +2074,7 @@ async def test_add_name_prefixes(monkeypatch: pytest.MonkeyPatch) -> None:
     [
         "gpt-4o-mini",
         "gemini-1.5-flash",
-        # TODO: Add anthropic models when available.
+        "claude-3-5-haiku-20241022",
     ],
 )
 async def test_muliple_system_message(model: str, openai_client: OpenAIChatCompletionClient) -> None:
@@ -2301,6 +2310,150 @@ async def test_single_system_message_for_gemini_model() -> None:
     system_messages = [msg for msg in oai_messages if msg["role"] == "system"]
     assert len(system_messages) == 1
     assert system_messages[0]["content"] == "I am the only system message"
+
+
+def noop(input: str) -> str:
+    return "done"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("model", ["gemini-1.5-flash"])
+async def test_empty_assistant_content_with_gemini(model: str, openai_client: OpenAIChatCompletionClient) -> None:
+    # Test tool calling
+    tool = FunctionTool(noop, name="noop", description="No-op tool")
+    messages: List[LLMMessage] = [UserMessage(content="Call noop", source="user")]
+    result = await openai_client.create(messages=messages, tools=[tool])
+    assert isinstance(result.content, list)
+    tool_call = result.content[0]
+    assert isinstance(tool_call, FunctionCall)
+
+    # reply with empty string as thought (== content)
+    messages.append(AssistantMessage(content=result.content, thought="", source="assistant"))
+    messages.append(
+        FunctionExecutionResultMessage(
+            content=[
+                FunctionExecutionResult(
+                    content="done",
+                    call_id=tool_call.id,
+                    is_error=False,
+                    name=tool_call.name,
+                )
+            ]
+        )
+    )
+
+    # This will crash if _set_empty_to_whitespace is not applied to "thought"
+    result = await openai_client.create(messages=messages)
+    assert isinstance(result.content, str)
+    assert result.content.strip() != "" or result.content == " "
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "model",
+    [
+        "gpt-4o-mini",
+        "gemini-1.5-flash",
+        "claude-3-5-haiku-20241022",
+    ],
+)
+async def test_empty_assistant_content_string_with_some_model(
+    model: str, openai_client: OpenAIChatCompletionClient
+) -> None:
+    # message: assistant is response empty content
+    messages: list[LLMMessage] = [
+        UserMessage(content="Say something", source="user"),
+        AssistantMessage(content="test", source="assistant"),
+        UserMessage(content="", source="user"),
+    ]
+
+    # This will crash if _set_empty_to_whitespace is not applied to "content"
+    result = await openai_client.create(messages=messages)
+    assert isinstance(result.content, str)
+
+
+def test_openai_model_registry_find_well() -> None:
+    model = "gpt-4o"
+    client1 = OpenAIChatCompletionClient(model=model, api_key="test")
+    client2 = OpenAIChatCompletionClient(
+        model=model,
+        model_info={
+            "vision": False,
+            "function_calling": False,
+            "json_output": False,
+            "structured_output": False,
+            "family": ModelFamily.UNKNOWN,
+        },
+        api_key="test",
+    )
+
+    def get_regitered_transformer(client: OpenAIChatCompletionClient) -> TransformerMap:
+        model_name = client._create_args["model"]  # pyright: ignore[reportPrivateUsage]
+        model_family = client.model_info["family"]
+        return get_transformer("openai", model_name, model_family)
+
+    assert get_regitered_transformer(client1) == get_regitered_transformer(client2)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "model",
+    [
+        "gpt-4o-mini",
+    ],
+)
+async def test_openai_model_unknown_message_type(model: str, openai_client: OpenAIChatCompletionClient) -> None:
+    class WrongMessage:
+        content = "foo"
+        source = "bar"
+
+    messages: List[WrongMessage] = [WrongMessage()]
+    with pytest.raises(ValueError, match="Unknown message type"):
+        await openai_client.create(messages=messages)  # type: ignore[arg-type]  # pyright: ignore[reportArgumentType]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "model",
+    [
+        "claude-3-5-haiku-20241022",
+    ],
+)
+async def test_claude_trailing_whitespace_at_last_assistant_content(
+    model: str, openai_client: OpenAIChatCompletionClient
+) -> None:
+    messages: list[LLMMessage] = [
+        UserMessage(content="foo", source="user"),
+        UserMessage(content="bar", source="user"),
+        AssistantMessage(content="foobar ", source="assistant"),
+    ]
+
+    result = await openai_client.create(messages=messages)
+    assert isinstance(result.content, str)
+
+
+def test_rstrip_railing_whitespace_at_last_assistant_content() -> None:
+    messages: list[LLMMessage] = [
+        UserMessage(content="foo", source="user"),
+        UserMessage(content="bar", source="user"),
+        AssistantMessage(content="foobar ", source="assistant"),
+    ]
+
+    # This will crash if _rstrip_railing_whitespace_at_last_assistant_content is not applied to "content"
+    dummy_client = OpenAIChatCompletionClient(model="claude-3-5-haiku-20241022", api_key="dummy-key")
+    result = dummy_client._rstrip_last_assistant_message(messages)  # pyright: ignore[reportPrivateUsage]
+
+    assert isinstance(result[-1].content, str)
+    assert result[-1].content == "foobar"
+
+
+def test_find_model_family() -> None:
+    assert _find_model_family("openai", "gpt-4") == ModelFamily.GPT_4
+    assert _find_model_family("openai", "gpt-4-latest") == ModelFamily.GPT_4
+    assert _find_model_family("openai", "gpt-4o") == ModelFamily.GPT_4O
+    assert _find_model_family("openai", "gemini-2.0-flash") == ModelFamily.GEMINI_2_0_FLASH
+    assert _find_model_family("openai", "claude-3-5-haiku-20241022") == ModelFamily.CLAUDE_3_5_HAIKU
+    assert _find_model_family("openai", "error") == ModelFamily.UNKNOWN
 
 
 # TODO: add integration tests for Azure OpenAI using AAD token.
