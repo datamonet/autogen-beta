@@ -1,16 +1,23 @@
 import html
 from typing import Optional
-
+import requests
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from loguru import logger
-
+import os
 from .exceptions import ProviderAuthException
 from .manager import AuthManager
 from .models import User
 
 router = APIRouter()
 
+use_secure_cookies = os.getenv("DEPLOY_ENV") == "production"
+takin_cookie_name = '__Secure-authjs.session-token' if use_secure_cookies else "authjs.session-token"
+
+# takin code：从请求中获取token
+def get_token(request: Request) -> str:
+    cookie = request.cookies.get(takin_cookie_name)
+    return cookie
 
 def get_auth_manager(request: Request) -> AuthManager:
     """Get the auth manager from app state."""
@@ -21,12 +28,19 @@ def get_auth_manager(request: Request) -> AuthManager:
 
 def get_current_user(request: Request) -> User:
     """Get the current authenticated user."""
-    if hasattr(request.state, "user"):
-        return request.state.user
+    takin_token = get_token(request)  # 从cookie中获取takin token
+    
+    takin_user = None
+    if takin_token:
+        response = requests.get(
+            f'{os.getenv("PUBLIC_TAKIN_API_URL", "http://localhost:3000")}/api/external/user',
+            headers={'Authorization': f'Bearer {takin_token}'}
+        )
+        if not response.ok:
+            return None
+        takin_user = response.json().get('data')
 
-    # This shouldn't normally happen as middleware should set user
-    logger.warning("User not found in request state")
-    return User(id="anonymous", name="Anonymous User")
+    return User(**takin_user, roles=[takin_user.get("role", "user")], avatar_url=takin_user.get("images"))
 
 
 @router.get("/login-url")
