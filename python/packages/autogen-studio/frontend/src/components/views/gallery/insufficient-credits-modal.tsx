@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Button } from "antd";
+import { getTakinServerUrl } from "../../utils/utils";
 
 interface InsufficientCreditsModalProps {
   open: boolean;
@@ -10,6 +11,7 @@ export const InsufficientCreditsModal: React.FC<InsufficientCreditsModalProps> =
   open,
   onHide,
 }) => {
+  const takinServerUrl = getTakinServerUrl();
   return (
     <Modal
       title={null}
@@ -36,7 +38,7 @@ export const InsufficientCreditsModal: React.FC<InsufficientCreditsModalProps> =
           type="primary"
           onClick={() => {
             onHide();
-            window.open(`${process.env.NEXT_PUBLIC_TAKIN_API_URL}/pricing`, "_blank");
+            window.open(`${takinServerUrl}/pricing`, "_blank");
           }}
         >
           Upgrade Now
