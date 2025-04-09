@@ -11,7 +11,7 @@ interface ProtectedRouteProps {
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  redirectTo = "/login",
+  redirectTo = "/signin",
 }) => {
   const { isAuthenticated, isLoading, authType } = useAuth();
   const takinServerUrl = getTakinServerUrl();
@@ -19,7 +19,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     console.log("ProtectedRoute: isAuthenticated", isAuthenticated, isLoading, authType);
     // If not loading and auth is required (not 'none') and user is not authenticated, redirect
     if (!isLoading && authType !== "none" && !isAuthenticated) {
-      navigate(`${takinServerUrl}/login`);
+      navigate(`${takinServerUrl}/signin`);
     }
   }, [isAuthenticated, isLoading, authType, redirectTo]);
 

@@ -33,7 +33,7 @@ def get_current_user(request: Request) -> User:
     takin_user = None
     if takin_token:
         response = requests.get(
-            f'{os.getenv("PUBLIC_TAKIN_API_URL", "http://localhost:3000")}/api/external/user',
+            f'{os.getenv("TAKIN_API_URL", "http://localhost:3000")}/api/external/user',
             headers={'Authorization': f'Bearer {takin_token}'}
         )
         if not response.ok:

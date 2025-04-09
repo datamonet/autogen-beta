@@ -7,6 +7,9 @@ export interface User {
   avatar_url?: string;
   provider?: string;
   roles?: string[];
+  subscriptionCredits?: number;
+  subscriptionPurchasedCredits?: number;
+  extraCredits?: number;
 }
 
 export class AuthAPI {
@@ -100,6 +103,19 @@ export class AuthAPI {
     } catch (error) {
       console.error("Error checking auth type:", error);
       return { type: "none" }; // Default to no auth
+    }
+  }
+
+  async logout(): Promise<void> {
+    try {
+      await fetch(`${this.getBaseUrl()}/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      console.error("Error during logout:", error);
+      throw error;
     }
   }
 }

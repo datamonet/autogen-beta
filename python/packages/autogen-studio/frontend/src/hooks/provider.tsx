@@ -9,17 +9,12 @@ export interface AppContextType {
   user: User | null;
   setUser: any;
   logout: any;
-  cookie_name: string;
 }
 
 export const appContext = React.createContext<AppContextType>(
   {} as AppContextType
 );
 
-const cookie_name =
-  process.env.NODE_ENV === "development"
-    ? "authjs.session-token"
-    : "__Secure-authjs.session-token";
 
 const AppProvider = ({ children }: any) => {
   // Dark mode handling
@@ -42,7 +37,6 @@ const AppProvider = ({ children }: any) => {
         user,
         setUser: () => {},
         logout,
-        cookie_name,
         darkMode,
         setDarkMode: updateDarkMode,
       }}

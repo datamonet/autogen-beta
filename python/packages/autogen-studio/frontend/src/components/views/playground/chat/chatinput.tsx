@@ -7,7 +7,8 @@ import {
 } from "@heroicons/react/24/outline";
 import * as React from "react";
 import { IStatus } from "../../../types/app";
-
+import { appContext } from "../../../../hooks/provider";
+import { InsufficientCreditsModal } from "../../gallery/insufficient-credits-modal";
 interface ChatInputProps {
   onSubmit: (text: string) => void;
   loading: boolean;
@@ -21,9 +22,11 @@ export default function ChatInput({
   error,
   disabled = false,
 }: ChatInputProps) {
+  const { user } = React.useContext(appContext);
   const textAreaRef = React.useRef<HTMLTextAreaElement>(null);
   const [previousLoading, setPreviousLoading] = React.useState(loading);
   const [text, setText] = React.useState("");
+  const [showCreditsModal, setShowCreditsModal] = React.useState(false);
 
   const textAreaDefaultHeight = "64px";
   const isInputDisabled = disabled || loading;
@@ -58,6 +61,18 @@ export default function ChatInput({
   };
 
   const handleSubmit = () => {
+    // 检测积分是否充足
+    const totalCredits = [
+      user?.subscriptionCredits,
+      user?.subscriptionPurchasedCredits,
+      user?.extraCredits
+    ].reduce((sum: number, credit?: number) => sum + (Number(credit) || 0), 0);
+
+    if (!user || totalCredits <= 0) {
+      setShowCreditsModal(true);
+      return;
+    }
+
     if (textAreaRef.current?.value && !isInputDisabled) {
       const query = textAreaRef.current.value;
       onSubmit(query);
@@ -126,6 +141,10 @@ export default function ChatInput({
           {error.message}
         </div>
       )}
+      <InsufficientCreditsModal
+      open={showCreditsModal}
+      onHide={() => setShowCreditsModal(false)}
+    />
     </div>
   );
 }

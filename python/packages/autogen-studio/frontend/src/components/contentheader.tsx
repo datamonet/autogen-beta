@@ -29,7 +29,7 @@ const ContentHeader = ({
   const takinServerUrl = getTakinServerUrl();
   const { user, logout } = React.useContext(appContext);
   const { sidebar, setSidebarState, header } = useConfigStore();
-  const { isExpanded } = sidebar;
+
   const { title, breadcrumbs } = header;
 
   return (
@@ -135,19 +135,6 @@ const ContentHeader = ({
                 <SunIcon className="h-6 w-6" />
               )}
             </button> */}
-            {user && <div className="ml-3 flex items-center space-x-2">
-              <SparklesIcon className="mr-2 h-4 w-4" />
-              <span
-                className="text-sm text-primary"
-                title={`Subscription credits: ${Number(user?.subscriptionCredits) || 0} + Purchased credits: ${Number(user?.subscriptionPurchasedCredits) || 0} + Extra credits: ${Number(user?.extraCredits) || 0}`}
-              >
-                {[
-                  user?.subscriptionCredits,
-                  user?.subscriptionPurchasedCredits,
-                  user?.extraCredits
-                ].reduce((sum: number, credit?: number) => sum + (Number(credit) || 0), 0).toFixed(2)}
-              </span>
-            </div>}
             {/* Notifications */}
             <button className="text-secondary hidden hover:text-primary">
               <BellIcon className="h-6 w-6" />
@@ -159,7 +146,7 @@ const ContentHeader = ({
             {/* User Menu */}
             {user && (
               <Menu as="div" className="relative">
-                <MenuButton className="flex items-center">
+                <MenuButton as="button" className="flex items-center">
                   {user.avatar_url ? (
                     <img
                       className="h-8 w-8 rounded-full"
@@ -180,25 +167,33 @@ const ContentHeader = ({
                 </MenuButton>
                 <MenuItems className="absolute right-0 mt-2 w-48 origin-top-right rounded-md bg-primary py-1 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                   <MenuItem>
-                    {({ active }) => (
+                    
                       <a
-                        href={user.role[0].toLowerCase() === 'admin' ? `/settings` : `${takinServerUrl}/settings`}
-                        className={classNames(active ? 'bg-secondary' : '', 'block px-4 py-2 text-sm text-primary')}
+                        href={`${takinServerUrl}/settings/credit-usage`}
+                        className="data-[active]:bg-secondary block px-4 py-2 text-sm text-primary"
+                      >
+                        Credit Usage
+                      </a>
+              
+                  </MenuItem>
+                  <MenuItem>
+                    
+                      <a
+                        href={user?.roles?.[0].toLowerCase() === 'admin' ? `/settings` : `${takinServerUrl}/settings`}
+                        className="data-[active]:bg-secondary block px-4 py-2 text-sm text-primary"
                       >
                         Settings
                       </a>
-                    )}
+              
                   </MenuItem>
                   <MenuItem>
-                    {({ active }) => (
+            
                       <div
                         onClick={() => logout()}
-                        className={`${active ? "bg-secondary" : ""
-                          } block px-4 py-2 text-sm text-primary`}
+                        className="data-[active]:bg-secondary block px-4 py-2 text-sm text-primary"
                       >
                         Sign out
                       </div>
-                    )}
                   </MenuItem>
                 </MenuItems>
               </Menu>
