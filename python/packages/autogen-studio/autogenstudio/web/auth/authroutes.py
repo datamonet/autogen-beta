@@ -200,3 +200,17 @@ async def get_user_info(current_user: User = Depends(get_current_user)):
 async def get_auth_type(auth_manager: AuthManager = Depends(get_auth_manager)):
     """Get the configured authentication type."""
     return {"type": auth_manager.config.type, "exclude_paths": auth_manager.config.exclude_paths}
+
+
+@router.post("/logout")
+async def logout():
+    """Clear authentication cookies and session."""
+    response = JSONResponse({"status": "success"})
+    response.delete_cookie(
+        key=takin_cookie_name,
+        path="/",
+        secure=use_secure_cookies,
+        httponly=True,
+        samesite="lax"
+    )
+    return response
