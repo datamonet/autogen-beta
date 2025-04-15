@@ -1,9 +1,13 @@
 import jwt
 from fastapi import WebSocket, WebSocketDisconnect, status
 from loguru import logger
-
+import os
 from .manager import AuthManager
 from .models import User
+
+use_secure_cookies = os.getenv("DEPLOY_ENV") == "production"
+takin_cookie_name = '__Secure-authjs.session-token' if use_secure_cookies else "authjs.session-token"
+
 
 
 class WebSocketAuthHandler:
@@ -25,13 +29,14 @@ class WebSocketAuthHandler:
 
         try:
             # Extract token from query params or headers query_params)
-            token = None
-            if "token" in websocket.query_params:
-                token = websocket.query_params["token"]
-            elif "authorization" in websocket.headers:
-                auth_header = websocket.headers["authorization"]
-                if auth_header.startswith("Bearer "):
-                    token = auth_header.replace("Bearer ", "")
+            # if "token" in websocket.query_params:
+            #     token = websocket.query_params["token"]
+            # elif "authorization" in websocket.headers:
+            #     auth_header = websocket.headers["authorization"]
+            #     if auth_header.startswith("Bearer "):
+            #         token = auth_header.replace("Bearer ", "")
+            # takin code: get token from cookie
+            token = websocket.cookies.get(takin_cookie_name, None)
 
             if not token:
                 logger.warning("No token found for WebSocket connection")
