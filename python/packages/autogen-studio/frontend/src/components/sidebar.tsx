@@ -11,9 +11,13 @@ import {
   PanelLeftOpen,
   GalleryHorizontalEnd,
   Rocket,
+  Beaker,
+  LucideBeaker,
+  FlaskConical,
 } from "lucide-react";
 import Icon from "./icons";
 import { getTakinServerUrl } from "./utils/utils";
+import { BeakerIcon } from "@heroicons/react/24/outline";
 
 interface INavItem {
   name: string;
@@ -44,6 +48,12 @@ const navigation: INavItem[] = [
     href: "/gallery",
     icon: GalleryHorizontalEnd,
     breadcrumbs: [{ name: "Gallery", href: "/gallery", current: true }],
+  },
+  {
+    name: "Labs",
+    href: "/labs",
+    icon: FlaskConical,
+    breadcrumbs: [{ name: "Labs", href: "/labs", current: true }],
   },
   // takin code:不需要显示deploy
   // {
