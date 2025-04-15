@@ -309,7 +309,7 @@ export default function ChatView({
 
                   const config = teamConfig?.config?.participants[0].config.model_client.config || { model: 'gpt-4o-mini' }
 
-                  const response = await fetch(`${getServerUrl()}/users/cost`, {
+                  const response = await fetch(`${getServerUrl()}/cost/`, {
                     method: "POST",
                     body: JSON.stringify({ ...config, run_id: current.id }),
                     headers: { "Content-Type": "application/json" },

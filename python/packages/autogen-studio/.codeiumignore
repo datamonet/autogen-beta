@@ -1,0 +1,35 @@
+# 忽略构建和缓存目录
+build/
+dist/
+.cache/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# 前端构建目录
+frontend/build/
+frontend/.cache/
+frontend/public/
+frontend/node_modules/
+
+# 环境和配置文件
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# IDE 和编辑器文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 其他临时文件
+*.log
+.DS_Store
