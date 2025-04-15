@@ -15,7 +15,7 @@ from .auth.middleware import AuthMiddleware
 from .config import settings
 from .deps import cleanup_managers, init_auth_manager, init_managers, register_auth_dependencies
 from .initialization import AppInitializer
-from .routes import runs, sessions, teams, validation, ws, gallery, settingsroute
+from .routes import runs, sessions, teams, validation, ws, gallery, settingsroute, cost
 
 # Initialize application
 app_file_path = os.path.dirname(os.path.abspath(__file__))
@@ -138,6 +138,14 @@ api.include_router(
     authroutes.router,
     prefix="/auth",
     tags=["auth"],
+    responses={404: {"description": "Not found"}},
+)
+
+# takin code: 用于计费的api，TODO:后续更新后需要找一个更合理的路由
+api.include_router(
+    cost.router,
+    prefix="/cost",
+    tags=["cost"],
     responses={404: {"description": "Not found"}},
 )
 
