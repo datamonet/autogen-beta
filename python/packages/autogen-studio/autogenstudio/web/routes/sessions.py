@@ -58,9 +58,27 @@ async def update_session(session_id: int, user_id: str, session: Session, db=Dep
 
 @router.delete("/{session_id}")
 async def delete_session(session_id: int, user_id: str, db=Depends(get_db)) -> Dict:
-    """Delete a session"""
-    db.delete(filters={"id": session_id, "user_id": user_id}, model_class=Session)
-    return {"status": True, "message": "Session deleted successfully"}
+    """Delete a session and all its associated messages"""
+    try:
+        # takin code: 基本重写了删除方法，之前的方法只完成了一半。First verify the session exists and belongs to user
+        existing = db.get(Session, filters={"id": session_id, "user_id": user_id})
+        if not existing.status or not existing.data:
+            raise HTTPException(status_code=404, detail="Session not found")
+
+        # First delete all messages associated with this session
+        msg_response = db.delete(filters={"session_id": session_id}, model_class=Message)
+        if not msg_response.status:
+            raise HTTPException(status_code=400, detail=msg_response.message)
+
+        # Then delete the session
+        response = db.delete(filters={"id": session_id, "user_id": user_id}, model_class=Session)
+        if not response.status:
+            raise HTTPException(status_code=400, detail=response.message)
+
+        return {"status": True, "message": "Session and its messages deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting session: {str(e)}")
+        return {"status": False, "message": f"Failed to delete session: {str(e)}"}
 
 
 @router.get("/{session_id}/runs")
