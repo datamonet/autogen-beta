@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import { appContext } from "../../../hooks/provider";
+import type { User } from "../../../auth/api";
 import { Tabs, Button, Tooltip, Drawer, Input } from "antd";
 import {
   Package,
@@ -146,6 +148,9 @@ export const GalleryDetail: React.FC<{
   onSave: (updates: Partial<Gallery>) => void;
   onDirtyStateChange: (isDirty: boolean) => void;
 }> = ({ gallery, onSave, onDirtyStateChange }) => {
+  const { user } = useContext(appContext) as { user: User | null };
+  const isAdmin = user?.roles?.[0]?.toLowerCase() === 'admin';
+
   if (!gallery.config.components) {
     return <div className="text-secondary">No components found</div>;
   }
@@ -309,7 +314,9 @@ export const GalleryDetail: React.FC<{
     URL.revokeObjectURL(url);
   };
 
-  const tabItems = Object.entries(iconMap).map(([key, Icon]) => ({
+  const tabItems = Object.entries(iconMap)
+    .filter(([key]) => isAdmin || !['model', 'tool'].includes(key))
+    .map(([key, Icon]) => ({
     key,
     label: (
       <span className="flex items-center gap-2">
@@ -341,7 +348,7 @@ export const GalleryDetail: React.FC<{
           </Button>
         </div>
         <ComponentGrid
-          items={gallery.config.components[`${key}s` as CategoryKey]}
+          items={(['model', 'tool'].includes(key) && !isAdmin) ? [] : gallery.config.components[`${key}s` as CategoryKey]}
           title={key}
           {...handlers}
         />

@@ -305,8 +305,8 @@ export default function ChatView({
 
                      目前autogen只支持了一个gpt-4o-mini模型
                      */}
-
-
+                  console.log(teamConfig)
+                  
                   const config = teamConfig?.config?.participants[0].config.model_client.config || { model: 'gpt-4o-mini' }
 
                   const response = await fetch(`${getServerUrl()}/cost/`, {

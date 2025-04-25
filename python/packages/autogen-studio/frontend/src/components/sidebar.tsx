@@ -1,5 +1,7 @@
 import React from "react";
 import { Link } from "gatsby";
+import { appContext } from "../hooks/provider";
+import type { User } from "../auth/api";
 import { useConfigStore } from "../hooks/store";
 import { Tooltip } from "antd";
 import {
@@ -30,7 +32,9 @@ interface INavItem {
   }>;
 }
 
-const navigation: INavItem[] = [
+const getNavigation = (isAdmin: boolean): INavItem[] => [
+  // Base navigation items that are always shown
+  // Filter out null values to satisfy TypeScript
   {
     name: "Team Builder",
     href: "/build",
@@ -49,12 +53,13 @@ const navigation: INavItem[] = [
     icon: GalleryHorizontalEnd,
     breadcrumbs: [{ name: "Gallery", href: "/gallery", current: true }],
   },
-  {
+  // Conditionally add Labs for admin users
+  ...(isAdmin ? [{
     name: "Labs",
     href: "/labs",
     icon: FlaskConical,
     breadcrumbs: [{ name: "Labs", href: "/labs", current: true }],
-  },
+  }] : []),
   // takin code:不需要显示deploy
   // {
   //   name: "Deploy",
@@ -78,6 +83,8 @@ type SidebarProps = {
 };
 
 const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
+  const { user } = React.useContext(appContext) as { user: User | null };
+  const isAdmin = user?.roles?.[0]?.toLowerCase() === 'admin';
   const { sidebar, setHeader, setSidebarState } = useConfigStore();
   const { isExpanded } = sidebar;
   const takinServerUrl = getTakinServerUrl();
@@ -100,7 +107,7 @@ const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
   };
 
   const setNavigationHeader = (path: string) => {
-    const navItem = navigation.find((item) => item.href === path);
+    const navItem = getNavigation(isAdmin).find((item) => item.href === path);
     if (navItem) {
       setHeader({
         title: navItem.name,
@@ -155,7 +162,7 @@ const Sidebar = ({ link, meta, isMobile }: SidebarProps) => {
                 !showFull && "items-center"
               )}
             >
-              {navigation.map((item) => {
+              {getNavigation(isAdmin).map((item) => {
                 const isActive = item.href === link;
                 const IconComponent = item.icon;
 
