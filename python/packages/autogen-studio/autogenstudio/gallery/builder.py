@@ -9,12 +9,13 @@ from autogen_agentchat.teams import RoundRobinGroupChat, SelectorGroupChat
 from autogen_core import ComponentModel
 from autogen_core.models import ModelInfo
 from autogen_ext.agents.web_surfer import MultimodalWebSurfer
-from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
+# from autogen_ext.code_executors.local import LocalCommandLineCodeExecutor
+# from autogen_ext.code_executors.docker import DockerCommandLineCodeExecutor
 from autogen_ext.models.anthropic import AnthropicChatCompletionClient
 from autogen_ext.models.openai import OpenAIChatCompletionClient
 from autogen_ext.models.openai._openai_client import AzureOpenAIChatCompletionClient
 from autogen_ext.tools.code_execution import PythonCodeExecutionTool
-
+from .code_executors import E2BCommandlineCodeExecutor
 from autogenstudio.datamodel import GalleryComponents, GalleryConfig, GalleryMetadata
 
 from . import tools as tools
@@ -334,6 +335,16 @@ Read the above conversation. Then select the next role from {participants} to pl
         code_execution_tool.dump_component(),
         label="Python Code Execution Tool",
         description="A tool that executes Python code in a local environment.",
+    )
+    
+    # takin code: add e2b tool
+    code_executor = E2BCommandlineCodeExecutor(work_dir=".coding")
+    code_execution_tool = PythonCodeExecutionTool(code_executor)
+
+    builder.add_tool(
+        code_execution_tool.dump_component(),
+        label="E2B Python Code Execution Tool",
+        description="A tool that executes Python code in a secure E2B sandbox environment.",
     )
 
     # Create deep research agent
