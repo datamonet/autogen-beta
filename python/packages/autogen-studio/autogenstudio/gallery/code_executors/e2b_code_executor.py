@@ -278,10 +278,10 @@ class E2BCommandlineCodeExecutor(CodeExecutor, Component[E2BCommandlineCodeExecu
 
         # 添加markdown格式的文件链接
         if files:
-            outputs.append("\nResult:\n")
+            outputs.append("\nResult:\n\n")
             for file_path in files:
-                relative_path = str(file_path)
-                outputs.append(f"📎 [{relative_path}]({relative_path})\n")
+                relative_path = str(file_path).split('/')[-1]
+                outputs.append(f"📎 [{relative_path}](https://autogen.takin.ai/files/{relative_path})\n\n")
 
         return CommandLineCodeResult(
             exit_code=last_exit_code,
