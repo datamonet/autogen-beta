@@ -276,6 +276,13 @@ class E2BCommandlineCodeExecutor(CodeExecutor, Component[E2BCommandlineCodeExecu
         files = self.sandbox_download_file()
         code_file = str(files[0]) if files else None
 
+        # 添加markdown格式的文件链接
+        if files:
+            outputs.append("\nResult:\n")
+            for file_path in files:
+                relative_path = str(file_path)
+                outputs.append(f"📎 [{relative_path}]({relative_path})\n")
+
         return CommandLineCodeResult(
             exit_code=last_exit_code,
             output="".join(outputs),

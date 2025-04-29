@@ -11,7 +11,7 @@ from PIL import Image
 
 
 async def generate_image(
-    query: str, output_dir: Optional[Path] = None, image_size: Literal["1024x1024", "512x512", "256x256"] = "1024x1024"
+    query: str, output_dir: Optional[Path] = '.coding', image_size: Literal["1024x1024", "512x512", "256x256"] = "1024x1024"
 ) -> List[str]:
     """
     Generate images using OpenAI's DALL-E model based on a text description.
