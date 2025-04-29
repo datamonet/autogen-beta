@@ -329,13 +329,13 @@ Read the above conversation. Then select the next role from {participants} to pl
         description="A tool that performs Google searches using the Google Custom Search API. Requires the requests library, [GOOGLE_API_KEY, GOOGLE_CSE_ID] to be set,  env variable to function.",
     )
 
-    code_executor = LocalCommandLineCodeExecutor(work_dir=".coding", timeout=360)
-    code_execution_tool = PythonCodeExecutionTool(code_executor)
-    builder.add_tool(
-        code_execution_tool.dump_component(),
-        label="Python Code Execution Tool",
-        description="A tool that executes Python code in a local environment.",
-    )
+    # code_executor = LocalCommandLineCodeExecutor(work_dir=".coding", timeout=360)
+    # code_execution_tool = PythonCodeExecutionTool(code_executor)
+    # builder.add_tool(
+    #     code_execution_tool.dump_component(),
+    #     label="Python Code Execution Tool",
+    #     description="A tool that executes Python code in a local environment.",
+    # )
     
     # takin code: add e2b tool
     code_executor = E2BCommandlineCodeExecutor(work_dir=".coding")
