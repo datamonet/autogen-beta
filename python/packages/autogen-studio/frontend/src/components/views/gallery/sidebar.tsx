@@ -51,7 +51,8 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
           </Tooltip>
         </div>
 
-        <div className="mt-4 px-2 -ml-1">
+        {/* takin code：隐藏创建gallery，默认只有一个并且共享 */}
+        {/* <div className="mt-4 px-2 -ml-1">
           <Tooltip title="Create new gallery">
             <Button
               type="text"
@@ -60,7 +61,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
               icon={<Plus className="w-4 h-4" />}
             />
           </Tooltip>
-        </div>
+        </div> */}
       </div>
     );
   }
@@ -87,7 +88,8 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
       </div>
 
       {/* Create Gallery Button */}
-      <div className="my-4 flex text-sm">
+      {/* takin code：隐藏创建gallery，默认只有一个并且共享 */}
+      {/* <div className="my-4 flex text-sm">
         <div className="mr-2 w-full">
           <Tooltip title="Create new gallery">
             <Button
@@ -100,7 +102,7 @@ export const GallerySidebar: React.FC<GallerySidebarProps> = ({
             </Button>
           </Tooltip>
         </div>
-      </div>
+      </div> */}
 
       {/* Section Label */}
       <div className="py-2 flex text-sm text-secondary">

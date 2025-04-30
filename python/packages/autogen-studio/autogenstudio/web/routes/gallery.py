@@ -38,13 +38,13 @@ async def create_gallery_entry(gallery_data: Gallery, db: DatabaseManager = Depe
 @router.get("/")
 async def list_gallery_entries(user_id: str, db: DatabaseManager = Depends(get_db)) -> Response:
     try:
-        result = db.get(Gallery, filters={"user_id": user_id})
+        result = db.get(Gallery)
         if not result.data or len(result.data) == 0:
             # create a default gallery entry
             gallery_config = create_default_gallery()
             default_gallery = Gallery(user_id=user_id, config=gallery_config.model_dump())
             db.upsert(default_gallery)
-            result = db.get(Gallery, filters={"user_id": user_id})
+            result = db.get(Gallery)
         return result
     except Exception as e:
         return Response(status=False, data=[], message=f"Error retrieving gallery entries: {str(e)}")
@@ -52,7 +52,7 @@ async def list_gallery_entries(user_id: str, db: DatabaseManager = Depends(get_d
 
 @router.get("/{gallery_id}")
 async def get_gallery_entry(gallery_id: int, user_id: str, db: DatabaseManager = Depends(get_db)) -> Response:
-    result = db.get(Gallery, filters={"id": gallery_id, "user_id": user_id})
+    result = db.get(Gallery, filters={"id": gallery_id})
     if not result.status or not result.data:
         raise HTTPException(status_code=404, detail="Gallery entry not found")
 

@@ -40,17 +40,20 @@ const ComponentCard: React.FC<
     item: Component<ComponentConfig>;
     index: number;
     allowDelete: boolean;
+    isAdmin: boolean;
   }
-> = ({ item, onEdit, onDuplicate, onDelete, index, allowDelete }) => (
+> = ({ item, onEdit, onDuplicate, onDelete, index, allowDelete, isAdmin }) => (
+  // takin code: hidden user edit
   <div
-    className="bg-secondary rounded overflow-hidden group h-full cursor-pointer"
-    onClick={() => onEdit(item, index)}
+    className={`bg-secondary rounded overflow-hidden group h-full ${isAdmin ? 'cursor-pointer' : ''}`}
+    onClick={() => isAdmin && onEdit(item, index)}
   >
     <div className="px-4 py-3 flex items-center justify-between border-b border-tertiary">
       <div className="text-xs text-secondary truncate flex-1">
         {item.provider}
       </div>
-      <div className="flex gap-0">
+      {/* takin code: hidden user edit */}
+      {isAdmin && <div className="flex gap-0">
         {allowDelete && (
           <Button
             title="Delete"
@@ -83,7 +86,7 @@ const ComponentCard: React.FC<
             onEdit(item, index);
           }}
         />
-      </div>
+      </div>}
     </div>
     <div className="p-4 pb-0 pt-3">
       <div className="text-base font-medium mb-2">{item.label}</div>
@@ -103,8 +106,9 @@ const ComponentGrid: React.FC<
   {
     items: Component<ComponentConfig>[];
     title: string;
+    isAdmin: boolean;
   } & CardActions
-> = ({ items, title, ...actions }) => (
+> = ({ items, title, isAdmin, ...actions }) => (
   <div>
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 auto-rows-fr">
       {items.map((item, idx) => (
@@ -113,6 +117,7 @@ const ComponentGrid: React.FC<
           item={item}
           index={idx}
           allowDelete={items.length > 1}
+          isAdmin={isAdmin}
           {...actions}
         />
       ))}
@@ -238,9 +243,8 @@ export const GalleryDetail: React.FC<{
     const category = `${activeTab}s` as CategoryKey;
     const components = gallery.config.components[category];
     let newComponent: Component<ComponentConfig>;
-    const newLabel = `New ${
-      activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
-    }`;
+    const newLabel = `New ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
+      }`;
 
     if (components.length > 0) {
       // Clone the entire component and just modify the label
@@ -314,47 +318,53 @@ export const GalleryDetail: React.FC<{
     URL.revokeObjectURL(url);
   };
 
+  // takin code: hidden user edit
   const tabItems = Object.entries(iconMap)
     .filter(([key]) => isAdmin || !['model', 'tool'].includes(key))
     .map(([key, Icon]) => ({
-    key,
-    label: (
-      <span className="flex items-center gap-2">
-        <Icon className="w-5 h-5" />
-        {key.charAt(0).toUpperCase() + key.slice(1)}s
-        <span className="text-xs font-light text-secondary">
-          ({gallery.config.components[`${key}s` as CategoryKey].length})
+      key,
+      label: (
+        <span className="flex items-center gap-2">
+          <Icon className="w-5 h-5" />
+          {key.charAt(0).toUpperCase() + key.slice(1)}s
+          <span className="text-xs font-light text-secondary">
+            ({gallery.config.components[`${key}s` as CategoryKey].length})
+          </span>
         </span>
-      </span>
-    ),
-    children: (
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-base font-medium">
-            {gallery.config.components[`${key}s` as CategoryKey].length}{" "}
-            {gallery.config.components[`${key}s` as CategoryKey].length === 1
-              ? key.charAt(0).toUpperCase() + key.slice(1)
-              : key.charAt(0).toUpperCase() + key.slice(1) + "s"}
-          </h3>
-          <Button
-            type="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => {
-              setActiveTab(key as ComponentTypes);
-              handleAdd();
-            }}
-          >
-            {`Add ${key.charAt(0).toUpperCase() + key.slice(1)}`}
-          </Button>
+      ),
+      children: (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-base font-medium">
+              {gallery.config.components[`${key}s` as CategoryKey].length}{" "}
+              {gallery.config.components[`${key}s` as CategoryKey].length === 1
+                ? key.charAt(0).toUpperCase() + key.slice(1)
+                : key.charAt(0).toUpperCase() + key.slice(1) + "s"}
+            </h3>
+            {/* takin code: hidden user edit */}
+            {isAdmin && (
+              <Button
+                type="primary"
+                icon={<Plus className="w-4 h-4" />}
+                onClick={() => {
+                  setActiveTab(key as ComponentTypes);
+                  handleAdd();
+                }}
+              >
+                {`Add ${key.charAt(0).toUpperCase() + key.slice(1)}`}
+              </Button>
+            )}
+          </div>
+          {/* takin code: hidden user edit */}
+          <ComponentGrid
+            items={(['model', 'tool'].includes(key) && !isAdmin) ? [] : gallery.config.components[`${key}s` as CategoryKey]}
+            title={key}
+            isAdmin={isAdmin}
+            {...handlers}
+          />
         </div>
-        <ComponentGrid
-          items={(['model', 'tool'].includes(key) && !isAdmin) ? [] : gallery.config.components[`${key}s` as CategoryKey]}
-          title={key}
-          {...handlers}
-        />
-      </div>
-    ),
-  }));
+      ),
+    }));
 
   return (
     <div className="max-w-7xl mx-auto px-4">
@@ -398,7 +408,8 @@ export const GalleryDetail: React.FC<{
                 <p className="text-secondary w-1/2 mt-2 line-clamp-2">
                   {gallery.config.metadata.description}
                 </p>
-                <div className="flex gap-0">
+                {/* takin code: hidden user edit */}
+                {isAdmin && <div className="flex gap-0">
                   <Tooltip title="Edit Gallery">
                     <Button
                       icon={<Edit className="w-4 h-4" />}
@@ -415,7 +426,7 @@ export const GalleryDetail: React.FC<{
                       className="text-white hover:text-white/80"
                     />
                   </Tooltip>
-                </div>
+                </div>}
               </div>
             )}
             {isEditingDetails && (
