@@ -224,6 +224,10 @@ class E2BCommandlineCodeExecutor(CodeExecutor, Component[E2BCommandlineCodeExecu
 
         for code_block in code_blocks:
             code = code_block.code
+            
+            # Replace !pip with pip to use shell commands instead of Jupyter-style commands
+            code = re.sub(r'^!pip', 'pip', code, flags=re.MULTILINE)
+            
             lang = detect_language(code, code_block.language.lower())
             # code = silence_pip(code, lang)
 
