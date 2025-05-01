@@ -116,6 +116,9 @@ export const TruncatableText = memo(
               isExpanded ? `mt-4 text-sm text-primary ${proseClassName}` : ""
             }
             remarkPlugins={[remarkGfm]}
+            components={{
+              a: ({node, ...props}) => <a target="_blank" rel="noopener noreferrer" {...props}/>
+            }}
           >
             {displayContent}
           </ReactMarkdown>
@@ -182,6 +185,9 @@ export const TruncatableText = memo(
                   <ReactMarkdown
                     className="text-primary"
                     remarkPlugins={[remarkGfm]}
+                    components={{
+                      a: ({node, ...props}) => <a target="_blank" rel="noopener noreferrer" {...props}/>
+                    }}
                   >
                     {content}
                   </ReactMarkdown>
