@@ -225,7 +225,7 @@ class E2BCommandlineCodeExecutor(CodeExecutor, Component[E2BCommandlineCodeExecu
         for code_block in code_blocks:
             code = code_block.code
             lang = detect_language(code, code_block.language.lower())
-            code = silence_pip(code, lang)
+            # code = silence_pip(code, lang)
 
             if lang in PYTHON_VARIANTS:
                 lang = "python"
