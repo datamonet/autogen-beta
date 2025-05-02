@@ -12,7 +12,7 @@ router = APIRouter()
 @router.get("/")
 async def get_settings(user_id: str, db=Depends(get_db)) -> Dict:
     try:
-        response = db.get(Settings, filters={"user_id": user_id})
+        response = db.get(Settings)
         if not response.status or not response.data:
             # create a default settings
             config = SettingsConfig()
