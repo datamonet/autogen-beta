@@ -209,6 +209,7 @@ async def logout():
     response.delete_cookie(
         key=takin_cookie_name,
         path="/",
+        domain=".takin",
         secure=use_secure_cookies,
         httponly=True,
         samesite="lax"
